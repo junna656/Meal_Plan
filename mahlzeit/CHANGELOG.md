@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1
+- Abstimmung enthält nur noch ausgewählte Gerichte (Wünsche für den Tag, von Hand hinzugefügte), keine automatischen Vorschläge mehr.
+
 ## 1.4.0
 - Samstag 9:00: Einkaufsliste automatisch in die To-do-Liste (ohne Doppelte) und Push mit dem Wochenplan.
 

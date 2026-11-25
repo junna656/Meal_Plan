@@ -62,6 +62,9 @@ def decide_due():
             for k, day in (plan.get("days") or {}).items():
                 cands = (day or {}).get("cands") or []
                 if not cands:
+                    if (day or {}).get("voting"):
+                        day["voting"] = None
+                        changed = True
                     continue
                 votes = day.get("votes") or {}
                 n = {c: 0 for c in cands}
@@ -72,7 +75,7 @@ def decide_due():
                 tied = [c for c in cands if n[c] == top]
                 tied = [c for c in tied if c in wished] or tied
                 winner = random.choice(tied)
-                day.update({"r": winner, "cands": None, "votes": None, "auto": True})
+                day.update({"r": winner, "cands": None, "votes": None, "voting": None, "auto": True})
                 for wp, wd in open_wishes.items():
                     if wd.get("r") == winner and not wd.get("done"):
                         wd.update({"done": True, "week": m.group(1)})
