@@ -1,0 +1,244 @@
+{
+ "recipes/maultaschen": {
+  "name": "Maultaschen geschmälzt",
+  "tags": [
+   "schnell",
+   "schwäbisch"
+  ],
+  "steps": "Zwiebeln in Ringe schneiden und in Butter goldbraun braten. Maultaschen nach Packung in Salzwasser ziehen lassen (Fleisch- und Gemüse-Maultaschen getrennt), abtropfen, mit Zwiebeln und Schnittlauch servieren. Dazu passt Kartoffel- oder grüner Salat.",
+  "ing": [
+   {
+    "n": "Maultaschen (Fleisch)",
+    "q": 250,
+    "u": "g",
+    "t": "meat"
+   },
+   {
+    "n": "Maultaschen (Gemüse/Spinat)",
+    "q": 250,
+    "u": "g",
+    "t": "veg"
+   },
+   {
+    "n": "Zwiebeln",
+    "q": 0.5,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Butter",
+    "q": 10,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Schnittlauch",
+    "q": 0.2,
+    "u": "Bund",
+    "t": "all"
+   }
+  ]
+ },
+ "recipes/nudelauflauf": {
+  "name": "Nudelauflauf mit Brokkoli",
+  "tags": [
+   "Ofen",
+   "Kinderliebling"
+  ],
+  "steps": "Nudeln 2 Minuten kürzer als angegeben kochen, Brokkoli in den letzten 3 Minuten mitgaren. Mit Paprikawürfeln in eine Auflaufform geben. Sahne, Milch, Salz, Pfeffer und Muskat verrühren, darübergießen, mit Käse bestreuen. Bei 200 °C ca. 25 Minuten backen.",
+  "ing": [
+   {
+    "n": "Nudeln (Penne)",
+    "q": 125,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Brokkoli",
+    "q": 100,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Paprika",
+    "q": 0.5,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Sahne",
+    "q": 75,
+    "u": "ml",
+    "t": "all"
+   },
+   {
+    "n": "Milch",
+    "q": 75,
+    "u": "ml",
+    "t": "all"
+   },
+   {
+    "n": "Reibekäse",
+    "q": 50,
+    "u": "g",
+    "t": "all"
+   }
+  ]
+ },
+ "recipes/wraps": {
+  "name": "Wraps mit Hähnchen oder Halloumi",
+  "tags": [
+   "schnell",
+   "selbst belegen"
+  ],
+  "steps": "Hähnchen in Streifen schneiden und anbraten, Halloumi in einer eigenen Pfanne braten. Salat, Tomaten, Gurke und Mais vorbereiten. Wraps kurz erwärmen, jeder belegt selbst mit Kräuterquark und Käse.",
+  "ing": [
+   {
+    "n": "Tortilla-Wraps",
+    "q": 2,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Hähnchenbrust",
+    "q": 120,
+    "u": "g",
+    "t": "meat"
+   },
+   {
+    "n": "Halloumi",
+    "q": 80,
+    "u": "g",
+    "t": "veg"
+   },
+   {
+    "n": "Eisbergsalat",
+    "q": 50,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Tomaten",
+    "q": 1,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Salatgurke",
+    "q": 0.25,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Mais (Dose)",
+    "q": 40,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Kräuterquark",
+    "q": 50,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Reibekäse",
+    "q": 25,
+    "u": "g",
+    "t": "all"
+   }
+  ]
+ },
+ "recipes/ofengemuese": {
+  "name": "Ofengemüse mit Feta",
+  "tags": [
+   "Ofen",
+   "gesund"
+  ],
+  "steps": "Kartoffeln, Paprika, Zucchini, Möhren und Zwiebeln in Stücke schneiden, mit Olivenöl, Salz, Pfeffer und Kräutern mischen. Auf einem Blech bei 200 °C ca. 35 Minuten rösten, nach 25 Minuten Feta darüberbröseln. Mit Kräuterquark servieren.",
+  "ing": [
+   {
+    "n": "Kartoffeln",
+    "q": 200,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Paprika",
+    "q": 1,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Zucchini",
+    "q": 0.5,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Möhren",
+    "q": 1,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Rote Zwiebeln",
+    "q": 0.5,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Feta",
+    "q": 50,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Olivenöl",
+    "q": 1,
+    "u": "EL",
+    "t": "all"
+   },
+   {
+    "n": "Kräuterquark",
+    "q": 75,
+    "u": "g",
+    "t": "all"
+   }
+  ]
+ },
+ "recipes/kaesespaetzle": {
+  "name": "Käsespätzle",
+  "tags": [
+   "Kinderliebling",
+   "Pfanne"
+  ],
+  "steps": "Zwiebeln in Ringe schneiden und in Butter langsam goldbraun braten. Spätzle nach Packung erhitzen, abwechselnd mit dem Käse in eine Pfanne oder Form schichten, bis der Käse schmilzt. Röstzwiebeln obendrauf. Dazu grüner Salat.",
+  "ing": [
+   {
+    "n": "Spätzle (Kühlregal)",
+    "q": 200,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Emmentaler/Bergkäse gerieben",
+    "q": 75,
+    "u": "g",
+    "t": "all"
+   },
+   {
+    "n": "Zwiebeln",
+    "q": 1,
+    "u": "Stk",
+    "t": "all"
+   },
+   {
+    "n": "Butter",
+    "q": 15,
+    "u": "g",
+    "t": "all"
+   }
+  ]
+ }
+}

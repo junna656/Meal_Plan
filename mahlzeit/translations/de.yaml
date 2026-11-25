@@ -1,0 +1,19 @@
+configuration:
+  personen:
+    name: Personen
+    description: >-
+      Wer am Tisch sitzt. muster sagt, wann jemand da ist: "immer", "gerade", "ungerade",
+      optional mit Tagen, mehrere Regeln mit ";" getrennt, z. B. "immer di,do; gerade fr,sa,so".
+      Leer oder "nie" = nur von Hand.
+  tage:
+    name: Geplante Tage
+    description: Wochentage im Plan, z. B. "mo,di,mi,do" (mo di mi do fr sa so).
+  kinderportion:
+    name: Kinderportion
+    description: Startwert, wie viel eine Kinderportion im Vergleich zu Erwachsenen ist.
+  einkaufsliste:
+    name: Einkaufsliste in Home Assistant
+    description: To-do-Liste, in die die Einkaufsliste übernommen werden kann (leer = aus).
+  ki_entity:
+    name: KI-Aufgaben-Entität
+    description: Optional, z. B. ai_task.claude. Dann gibt es Rezept-Ideen und Rezepte zu Wünschen per KI.
