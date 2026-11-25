@@ -4,6 +4,10 @@ Speichert alle Daten als JSON-Dokumente in /data/store.json und liefert die Webo
 """
 import json
 import os
+import random
+import time
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 import re
 import threading
 import urllib.request
@@ -28,6 +32,63 @@ PATH_RE = re.compile(r"^(recipes|wishes|plans|shop|settings)/[A-Za-z0-9_\-.:@+~]
 MAX_BODY = 256 * 1024
 
 lock = threading.Lock()
+try:
+    TZ = ZoneInfo(os.environ.get("TZ") or "Europe/Berlin")
+except Exception:
+    TZ = ZoneInfo("Europe/Berlin")
+
+
+def deadline(week_id):
+    """Samstag 9:00 vor der Planwoche."""
+    y, w = week_id.split("-W")
+    monday = date.fromisocalendar(int(y), int(w), 1)
+    sat = monday - timedelta(days=2)
+    return datetime(sat.year, sat.month, sat.day, 9, 0, tzinfo=TZ)
+
+
+def decide_due():
+    """Entscheidet alle Abstimmungen, deren Frist abgelaufen ist."""
+    now = datetime.now(TZ)
+    changed = False
+    with lock:
+        docs = state["docs"]
+        open_wishes = {p: d for p, d in docs.items() if p.startswith("wishes/") and not d.get("done")}
+        wished = {d.get("r") for d in open_wishes.values() if d.get("r")}
+        for path, plan in list(docs.items()):
+            m = re.fullmatch(r"plans/(\d{4}-W\d{2})", path)
+            if not m or deadline(m.group(1)) > now:
+                continue
+            for k, day in (plan.get("days") or {}).items():
+                cands = (day or {}).get("cands") or []
+                if not cands:
+                    continue
+                votes = day.get("votes") or {}
+                n = {c: 0 for c in cands}
+                for c in votes.values():
+                    if c in n:
+                        n[c] += 1
+                top = max(n.values())
+                tied = [c for c in cands if n[c] == top]
+                tied = [c for c in tied if c in wished] or tied
+                winner = random.choice(tied)
+                day.update({"r": winner, "cands": None, "votes": None, "auto": True})
+                for wp, wd in open_wishes.items():
+                    if wd.get("r") == winner and not wd.get("done"):
+                        wd.update({"done": True, "week": m.group(1)})
+                print(f"Abstimmung {m.group(1)} {k} entschieden: {winner} ({top} Stimmen)", flush=True)
+                changed = True
+        if changed:
+            state["rev"] += 1
+            save_store(state)
+
+
+def scheduler():
+    while True:
+        try:
+            decide_due()
+        except Exception as e:
+            print("Fehler beim Entscheiden:", e, flush=True)
+        time.sleep(60)
 
 
 def load_options():
@@ -191,4 +252,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"Mahlzeit-Planer läuft auf Port {PORT} (HA-Zugriff: {'ja' if TOKEN else 'nein'})", flush=True)
+    threading.Thread(target=scheduler, daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.0
+- Abstimmungen laufen bis Samstag 9:00 vor der Planwoche; danach entscheidet die App automatisch (meiste Stimmen, bei Gleichstand Wünsche zuerst).
+
 ## 1.2.0
 - Abstimmung pro Abend: jeder am Tisch tippt sein Lieblingsgericht an, dann „Entscheiden“ (Gleichstand: Wünsche zuerst, sonst Zufall).
 - Wünsche können für einen bestimmten Tag abgegeben werden und landen dort in der Abstimmung.
