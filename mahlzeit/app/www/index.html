@@ -76,6 +76,7 @@ h2{font-size:24px;line-height:1.1;margin:26px 0 8px}
 .idea p.dish{margin:0 0 4px;font-size:20px}.idea p{margin:4px 0;font-size:15px}
 nav a{padding-inline:2px;font-size:15px}
 .vote{margin:10px 0 4px;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+.vsum{width:100%;text-align:left;background:transparent;padding:0;min-height:44px;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:15px}.day .vsum b{color:var(--tom);font:700 15px Figtree,system-ui,sans-serif}.vsum span:last-child{white-space:nowrap;font-weight:600;color:var(--soft)}
 .vc{padding:8px 0;border-bottom:1px dashed var(--line)}.vc:last-of-type{border-bottom:0}
 .vc .top{display:flex;justify-content:space-between;gap:8px;font-weight:600}.vc .top span:last-child{white-space:nowrap}.vc.lead .top{color:var(--tom)}
 .vc .ppl{margin:6px 0 0}.vc .p{min-height:32px;font-size:13px}
@@ -196,15 +197,19 @@ function renderWeek(){
 const deadline=()=>{const s=add(mon,-2);s.setHours(9,0,0,0);return s};
 const locked=()=>Date.now()>=deadline();
 const dlText=()=>deadline().toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'})+', 9:00 Uhr';
+const vOpen=new Set(),vClosed=new Set();
+const isOpen=(k,d)=>vOpen.has(k)?true:vClosed.has(k)?false:!(me&&d.votes?.[me]);
 function voteBlock(k,d,att){const v=d.votes||{},n={};for(const id of Object.values(v))n[id]=(n[id]||0)+1;const max=Math.max(0,...Object.values(n));
   const who=PEOPLE.filter(p=>att[p.id]),left=who.filter(p=>!v[p.id]).map(p=>p.n);
   const cands=d.cands||[],add=recipes.filter(x=>fits(x,att)&&!cands.includes(x.id));
   const lk=locked();
+  if(!isOpen(k,d)){const lead=cands.filter(id=>max&&n[id]===max).map(id=>rById(id)?.name).filter(Boolean);
+    return `<div class="vote"><button class="vsum" data-vopen="${k}" aria-expanded="false"><span>${lk?'Abstimmung beendet':'Abstimmung läuft'}${lead.length?` · <b>${esc(lead.join(' / '))}</b> vorne (${max})`:` · ${cands.length} ${cands.length===1?'Gericht':'Gerichte'}, noch keine Stimme`}${!lk&&left.length?` · fehlt: ${esc(left.join(', '))}`:''}</span><span>Öffnen ›</span></button></div>`}
   return `<div class="vote"><div class="meta">${lk?'Abstimmung beendet – wird gleich ausgewertet':`Abstimmen bis ${dlText()} – jeder tippt seinen Namen beim Lieblingsgericht an${left.length?` · fehlt noch: ${esc(left.join(', '))}`:' · alle haben abgestimmt'}`}</div>
   ${cands.length?'':'<p class="meta">Noch keine Gerichte ausgewählt – wünscht euch eins für diesen Tag oder fügt eins hinzu.</p>'}${cands.map(id=>{const x=rById(id);if(!x)return'';return `<div class="vc${max&&n[id]===max?' lead':''}"><div class="top"><span>${esc(x.name)}</span><span>${n[id]||0} ${n[id]===1?'Stimme':'Stimmen'}</span></div>
    <div class="ppl">${who.map(p=>`<button class="p${v[p.id]===id?' on':''}${p.veg?' v':''}" data-vote="${k}" data-c="${esc(id)}" data-p="${esc(p.id)}" aria-pressed="${v[p.id]===id}"${lk?' disabled':''}>${esc(p.n)}</button>`).join('')}</div></div>`}).join('')}
   ${lk?'':`<div class="row" style="margin-top:8px">${add.length?`<select data-addc="${k}" aria-label="Gericht zur Abstimmung hinzufügen"><option value="">+ Gericht dazu …</option>${add.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
-  <button class="pri" data-decide="${k}"${cands.length?'':' disabled'}>Entscheiden</button><button data-endvote="${k}">Abbrechen</button></div>`}</div>`}
+  <button class="pri" data-decide="${k}"${cands.length?'':' disabled'}>Entscheiden</button><button data-vclose="${k}">Einklappen</button><button data-endvote="${k}">Abbrechen</button></div>`}${lk?`<button data-vclose="${k}">Einklappen</button>`:''}</div>`}
 function suggest(k,taken){
   const att=attOf(k),used=new Set([...Object.values(plan.days||{}),...Object.values(prevPlan.days||{})].map(d=>d?.r).concat(taken||[]));
   const pool=recipes.filter(r=>fits(r,att));const fresh=pool.filter(r=>!used.has(r.id));
@@ -312,7 +317,9 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   if(b.dataset.att){const k=b.dataset.att,a=attOf(k);a[b.dataset.p]=!a[b.dataset.p];setDay(k,{att:a})}
   else if(b.dataset.sug){const k=b.dataset.sug,id=suggest(k);if(id)setDay(k,{r:id})}
   else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
-  else if(b.dataset.startvote){const k=b.dataset.startvote;setDay(k,{voting:true,cands:voteCands(k),votes:{}})}
+  else if(b.dataset.vopen){vOpen.add(b.dataset.vopen);vClosed.delete(b.dataset.vopen);render()}
+  else if(b.dataset.vclose){vClosed.add(b.dataset.vclose);vOpen.delete(b.dataset.vclose);render()}
+  else if(b.dataset.startvote){vOpen.add(b.dataset.startvote);const k=b.dataset.startvote;setDay(k,{voting:true,cands:voteCands(k),votes:{}})}
   else if(b.dataset.vote){if(locked())return;const k=b.dataset.vote,v={...(dayOf(k).votes||{})};if(v[b.dataset.p]===b.dataset.c)delete v[b.dataset.p];else v[b.dataset.p]=b.dataset.c;setDay(k,{votes:v})}
   else if(b.dataset.decide){const k=b.dataset.decide,id=decide(k);if(id)setDay(k,{r:id,cands:null,votes:null,voting:null})}
   else if(b.dataset.endvote)setDay(b.dataset.endvote,{cands:null,votes:null,voting:null});

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2
+- Abstimmung lässt sich einklappen; nach der eigenen Stimme ist sie eingeklappt und zeigt nur, was vorne liegt und wer fehlt.
+
 ## 1.4.1
 - Abstimmung enthält nur noch ausgewählte Gerichte (Wünsche für den Tag, von Hand hinzugefügte), keine automatischen Vorschläge mehr.
 
