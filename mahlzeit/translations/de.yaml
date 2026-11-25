@@ -20,6 +20,12 @@ configuration:
   einkaufsliste:
     name: Einkaufsliste in Home Assistant
     description: To-do-Liste, in die die Einkaufsliste übernommen werden kann (leer = aus).
+  samstag_versand:
+    name: Samstags-Versand
+    description: Samstag 9:00 nach der Abstimmung die Einkaufsliste in die To-do-Liste übernehmen und den Plan per Push schicken.
+  benachrichtigen:
+    name: Push an
+    description: Notify-Dienste für den Samstags-Push, z. B. notify.mobile_app_gunnars_iphone.
   ki_entity:
     name: KI-Aufgaben-Entität
     description: Optional, z. B. ai_task.claude. Dann gibt es Rezept-Ideen und Rezepte zu Wünschen per KI.

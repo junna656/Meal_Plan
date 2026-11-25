@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.0
+- Samstag 9:00: Einkaufsliste automatisch in die To-do-Liste (ohne Doppelte) und Push mit dem Wochenplan.
+
 ## 1.3.0
 - Abstimmungen laufen bis Samstag 9:00 vor der Planwoche; danach entscheidet die App automatisch (meiste Stimmen, bei Gleichstand Wünsche zuerst).
 

@@ -3,6 +3,7 @@
 Speichert alle Daten als JSON-Dokumente in /data/store.json und liefert die Weboberfläche über Ingress aus.
 """
 import json
+import math
 import os
 import random
 import time
@@ -82,10 +83,192 @@ def decide_due():
             save_store(state)
 
 
+DAYNAMES = {"mo": "Mo", "di": "Di", "mi": "Mi", "do": "Do", "fr": "Fr", "sa": "Sa", "so": "So"}
+ORDER = list(DAYNAMES)
+
+
+def parse_rules(s):
+    s = str(s or "").lower().strip()
+    if not s or s == "nie":
+        return []
+    out = []
+    for part in [x.strip() for x in s.split(";") if x.strip()]:
+        wk, days = "immer", None
+        for t in part.split():
+            if t in ("immer", "gerade", "ungerade"):
+                wk = t
+            else:
+                days = [d.strip()[:2] for d in t.split(",") if d.strip()]
+        out.append((wk, days))
+    return out
+
+
+def people(o):
+    used, res = set(), []
+    for p in o.get("personen", []):
+        pid = re.sub(r"[^a-z0-9äöüß]+", "-", str(p.get("name") or "p").lower())[:30] or "p"
+        while pid in used:
+            pid += "-"
+        used.add(pid)
+        res.append({"id": pid, "n": p.get("name", ""), "kid": bool(p.get("kind")), "veg": bool(p.get("vegetarisch")),
+                    "rules": parse_rules(p.get("muster"))})
+    return res
+
+
+def def_att(ppl, k, monday):
+    even = monday.isocalendar()[1] % 2 == 0
+    return {p["id"]: any((wk == "immer" or (wk == "gerade") == even) and (not days or k in days) for wk, days in p["rules"])
+            for p in ppl}
+
+
+def fixed_for(o, ppl, k, monday, att):
+    everyone = bool(ppl) and all(att.get(p["id"]) for p in ppl)
+    for f in o.get("feste_abende", []):
+        if f.get("tag") != k or not f.get("gericht"):
+            continue
+        wenn = f.get("wenn", "immer")
+        if wenn == "immer":
+            return f["gericht"]
+        if not everyone:
+            continue
+        if wenn == "alle_erster_im_monat":
+            d = monday + timedelta(days=ORDER.index(k))
+            x, first = d - timedelta(days=7), True
+            while x.month == d.month:
+                m2 = x - timedelta(days=x.weekday())
+                a = def_att(ppl, k, m2)
+                if all(a.get(p["id"]) for p in ppl):
+                    first = False
+                    break
+                x -= timedelta(days=7)
+            if first:
+                return f["gericht"]
+            continue
+        return f["gericht"]
+    return None
+
+
+def num(x):
+    s = f"{x:.1f}".rstrip("0").rstrip(".")
+    return s.replace(".", ",")
+
+
+def fmt_q(q, u):
+    if u in ("g", "ml"):
+        v = math.ceil(q / 5) * 5 if q < 50 else math.ceil(q / 10) * 10
+        return f"{num(v / 1000)} {'kg' if u == 'g' else 'l'}" if v >= 1000 else f"{v} {u}"
+    return f"{num(math.ceil(q - 0.05) if u == 'Stk' else math.ceil(q * 2) / 2)} {u}"
+
+
+def week_summary(week_id):
+    """Plan-Übersicht und offene Einkaufsposten einer Woche (wie in der Weboberfläche gerechnet)."""
+    o = load_options()
+    ppl = people(o)
+    y, w = week_id.split("-W")
+    monday = date.fromisocalendar(int(y), int(w), 1)
+    docs = state["docs"]
+    recipes = {p[8:]: d for p, d in docs.items() if p.startswith("recipes/")}
+    by_name = {str(d.get("name", "")).lower(): d for d in recipes.values()}
+    plan = (docs.get(f"plans/{week_id}") or {}).get("days") or {}
+    shop = docs.get(f"shop/{week_id}") or {}
+    kid = float((docs.get("settings/main") or {}).get("kidFactor") or o.get("kinderportion") or 0.6)
+    tage = [t.strip()[:2] for t in str(o.get("tage", "mo,di,mi,do")).lower().split(",")]
+    lines, items = [], {}
+    for k in [d for d in ORDER if d in tage]:
+        day = plan.get(k) or {}
+        att = {**def_att(ppl, k, monday), **(day.get("att") or {})}
+        r = recipes.get(day.get("r"))
+        fx = None if r else fixed_for(o, ppl, k, monday, att)
+        if not r and fx:
+            r = by_name.get(fx.lower())
+        lines.append(f"{DAYNAMES[k]}: {fx or (r or {}).get('name') or '–'}")
+        if not r:
+            continue
+        tot = veg = 0.0
+        for p in ppl:
+            if att.get(p["id"]):
+                f = kid if p["kid"] else 1
+                tot += f
+                veg += f if p["veg"] else 0
+        ing = r.get("ing") or []
+        has_alt = any(x.get("t") == "veg" for x in ing)
+        for x in ing:
+            t = x.get("t", "all")
+            n = (tot - veg if has_alt else tot) if t == "meat" else veg if t == "veg" else tot
+            q = float(x.get("q") or 0) * n
+            if q <= 0:
+                continue
+            key = re.sub(r"[^a-z0-9äöüß|]+", "-", f"{x.get('n')}|{x.get('u')}".lower())
+            e = items.setdefault(key, {"n": x.get("n"), "u": x.get("u"), "q": 0.0})
+            e["q"] += q
+    checked = shop.get("checked") or {}
+    todo = [f"{e['n']} ({fmt_q(e['q'], e['u'])})" for k, e in sorted(items.items(), key=lambda i: str(i[1]['n']).lower())
+            if not checked.get(k)]
+    todo += [x.get("t") for x in shop.get("extras") or [] if not x.get("done") and x.get("t")]
+    return lines, todo
+
+
+def add_todo(entity, items):
+    """Fügt Einträge hinzu, die nicht schon offen auf der Liste stehen."""
+    have = set()
+    try:
+        res = core("POST", "/services/todo/get_items?return_response", {"entity_id": entity, "status": "needs_action"})
+        for v in ((res or {}).get("service_response") or {}).values():
+            have |= {str(i.get("summary", "")).strip().lower() for i in v.get("items", [])}
+    except Exception as e:
+        print("Einkaufsliste nicht lesbar:", e, flush=True)
+    added = 0
+    for item in items:
+        if item.strip().lower() in have:
+            continue
+        core("POST", "/services/todo/add_item", {"entity_id": entity, "item": item})
+        have.add(item.strip().lower())
+        added += 1
+    return added
+
+
+def saturday_send():
+    """Samstag nach der Frist: Einkaufsliste nach HA und Push mit dem Plan, einmal pro Woche."""
+    o = load_options()
+    if not o.get("samstag_versand", True) or not TOKEN:
+        return
+    now = datetime.now(TZ)
+    nxt = (now + timedelta(days=7 - now.weekday())).date()  # nächster Montag
+    week_id = f"{nxt.isocalendar()[0]}-W{nxt.isocalendar()[1]:02d}"
+    dl = deadline(week_id)
+    if not (dl <= now < dl + timedelta(hours=12)):
+        return
+    with lock:
+        sent = (state["docs"].get("settings/versand") or {}).get("weeks", [])
+        if week_id in sent:
+            return
+        lines, todo = week_summary(week_id)
+        state["docs"]["settings/versand"] = {"weeks": (sent + [week_id])[-10:]}
+        state["rev"] += 1
+        save_store(state)
+    added = 0
+    if o.get("einkaufsliste") and todo:
+        try:
+            added = add_todo(o["einkaufsliste"], todo)
+        except Exception as e:
+            print("Einkaufsliste fehlgeschlagen:", e, flush=True)
+    panel = "/" + os.environ.get("HOSTNAME", "").replace("-", "_") if os.environ.get("HOSTNAME") else "/"
+    msg = "\n".join(lines) + (f"\n{added} Dinge auf der Einkaufsliste." if added else "")
+    for svc in o.get("benachrichtigen", []):
+        svc = str(svc).removeprefix("notify.")
+        try:
+            core("POST", f"/services/notify/{svc}", {"title": f"Essensplan KW {week_id[-2:]} steht", "message": msg,
+                                                    "data": {"url": panel, "clickAction": panel}})
+        except Exception as e:
+            print(f"Push an {svc} fehlgeschlagen:", e, flush=True)
+    print(f"Samstags-Versand {week_id}: {added} Einträge, Push an {len(o.get('benachrichtigen', []))}", flush=True)
+
+
 def scheduler():
     while True:
         try:
             decide_due()
+            saturday_send()
         except Exception as e:
             print("Fehler beim Entscheiden:", e, flush=True)
         time.sleep(60)
@@ -233,9 +416,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not entity:
                     return self.send_json({"error": "Keine Einkaufsliste eingestellt"}, 400)
                 items = [str(i)[:200] for i in body.get("items", []) if str(i).strip()][:100]
-                for item in items:
-                    core("POST", "/services/todo/add_item", {"entity_id": entity, "item": item})
-                return self.send_json({"added": len(items)})
+                return self.send_json({"added": add_todo(entity, items)})
             if path == "/api/ki":
                 entity = o.get("ki_entity")
                 if not entity:

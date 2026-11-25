@@ -1,5 +1,5 @@
 name: Mahlzeit-Planer
-version: "1.3.0"
+version: "1.4.0"
 slug: mahlzeit
 description: Wochenplan fürs Abendessen, Rezepte, Wünsche und Einkaufsliste für die ganze Familie
 url: https://github.com/junna656/meal_plan
@@ -25,6 +25,8 @@ options:
   feste_abende: []
   kinderportion: 0.6
   einkaufsliste: todo.einkaufsliste
+  samstag_versand: true
+  benachrichtigen: []
   ki_entity: ""
 schema:
   personen:
@@ -39,4 +41,7 @@ schema:
       wenn: list(immer|alle|alle_erster_im_monat)
   kinderportion: float(0.2,1.5)
   einkaufsliste: str?
+  samstag_versand: bool
+  benachrichtigen:
+    - str
   ki_entity: str?
