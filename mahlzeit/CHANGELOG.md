@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+- Abstimmung pro Abend: jeder am Tisch tippt sein Lieblingsgericht an, dann „Entscheiden“ (Gleichstand: Wünsche zuerst, sonst Zufall).
+- Wünsche können für einen bestimmten Tag abgegeben werden und landen dort in der Abstimmung.
+
 ## 1.1.0
 - Feste Abende (z. B. Abendbrot am Donnerstag, wenn alle da sind; Döner-Dienstag einmal im Monat).
 

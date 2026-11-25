@@ -68,13 +68,17 @@ h2{font-size:24px;line-height:1.1;margin:26px 0 8px}
 .tag.v{background:var(--veg);color:#fff}
 .wf{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:8px;margin:8px 0 6px}
 .wf select,.wf input{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 10px;width:100%}
-.wf input,.wf button{grid-column:1/-1}
+.wf input,.wf button,.wf #wday{grid-column:1/-1}
 .wish{padding:12px 0;border-bottom:1px solid var(--line)}
 .wish p{margin:0 0 8px;font-size:17px}.wish p b{color:var(--tom)}
 .wish.done p{color:var(--soft);text-decoration:line-through}
 .idea{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
 .idea p.dish{margin:0 0 4px;font-size:20px}.idea p{margin:4px 0;font-size:15px}
 nav a{padding-inline:2px;font-size:15px}
+.vote{margin:10px 0 4px;padding:10px 12px;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+.vc{padding:8px 0;border-bottom:1px dashed var(--line)}.vc:last-of-type{border-bottom:0}
+.vc .top{display:flex;justify-content:space-between;gap:8px;font-weight:600}.vc .top span:last-child{white-space:nowrap}.vc.lead .top{color:var(--tom)}
+.vc .ppl{margin:6px 0 0}.vc .p{min-height:32px;font-size:13px}
 .ov{position:fixed;inset:0;background:rgba(20,10,20,.55);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;z-index:9}
 .ov.on{display:flex}
 .f{background:var(--bg);border-radius:16px;padding:20px;width:min(640px,100%)}
@@ -157,6 +161,14 @@ function save(path,data){docs[path]=data;derive();write(path,()=>api('PUT','api/
 function del(path){delete docs[path];derive();render();write(path,()=>api('DELETE','api/doc/'+path))}
 function msg(t){$('#msg').innerHTML=t?'<div class="err">'+esc(t)+'</div>':''}
 function markWishes(ids){for(const w of wishes)if(!w.done&&w.r&&ids.includes(w.r)){const{id,...d}=w;save('wishes/'+id,{...d,done:true,week:wid(mon)})}}
+function voteCands(k,taken=[]){const att=attOf(k),wk=wid(mon),out=[];const ok=id=>{const x=rById(id);return x&&fits(x,att)&&!out.includes(id)&&!taken.includes(id)};
+  for(const w of wishes)if(!w.done&&w.r&&w.day===k&&w.week===wk&&ok(w.r))out.push(w.r);
+  for(const w of wishes)if(!w.done&&w.r&&!w.day&&ok(w.r))out.push(w.r);
+  for(let i=0;i<12&&out.length<3;i++){const id=suggest(k,out);if(id&&ok(id))out.push(id)}
+  return out.slice(0,4)}
+function decide(k){const d=dayOf(k),c=d.cands||[],v=d.votes||{},n={};for(const id of c)n[id]=0;for(const id of Object.values(v))if(id in n)n[id]++;
+  const max=Math.max(0,...Object.values(n));let tied=c.filter(id=>n[id]===max);const wished=new Set(wishes.filter(w=>!w.done).map(w=>w.r));
+  const tw=tied.filter(id=>wished.has(id));if(tw.length)tied=tw;return tied[Math.floor(Math.random()*tied.length)]}
 function setDay(k,patch){plan={days:{...plan.days,[k]:{...dayOf(k),...patch}}};save('plans/'+wid(mon),plan);if(patch.r)markWishes([patch.r]);render()}
 
 // ---- Woche ----
@@ -173,7 +185,8 @@ function renderWeek(){
     return `<article class="day"><b>${name}<small>${dfmt(add(mon,o))}</small></b><div>
       <p class="dish${r||fx?'':' empty'}">${fx?esc(fx):r?esc(r.name):'Noch nichts geplant'}${fx?' <span class="tag">Fester Abend</span>':''}${fx&&!r?' <span class="tag">kein Einkauf</span>':''}</p>
       <div class="row"><select data-k="${k}" aria-label="Gericht am ${name}">${recipeOptions(d.r,att,fx)}</select>
-      <button data-sug="${k}">Vorschlag</button></div>
+      <button data-sug="${k}">Vorschlag</button>${d.cands?.length?'':`<button data-startvote="${k}">Abstimmen</button>`}</div>
+      ${d.cands?.length?voteBlock(k,d,att):''}
       <div class="ppl">${PEOPLE.map(x=>`<button class="p${att[x.id]?' on':''}${x.veg?' v':''}" data-att="${k}" data-p="${esc(x.id)}" aria-pressed="${!!att[x.id]}">${esc(x.n)}</button>`).join('')}</div>
       <div class="meta">${PEOPLE.filter(x=>att[x.id]).length} Personen · ${nf(p.tot)} Portionen</div>${status}</div></article>`}).join('');
   $('#v-woche').innerHTML=`<p class="note">Wer mitisst, kommt aus den Mustern in den App-Einstellungen. Antippen ändert einen Abend.${PEOPLE.length?'':' Noch keine Personen eingestellt.'}</p>${h}
@@ -181,6 +194,14 @@ function renderWeek(){
   <label class="meta">Kinderportion <select id="kf">${[0.5,0.6,0.7,0.8,1].map(v=>`<option${v==settings.kidFactor?' selected':''}>${nf(v)}</option>`).join('')}</select></label></div>`;
   if(!recipes.length)$('#v-woche').insertAdjacentHTML('afterbegin','<p class="note">Noch keine Rezepte – lege unter „Rezepte“ welche an.</p>');
 }
+function voteBlock(k,d,att){const v=d.votes||{},n={};for(const id of Object.values(v))n[id]=(n[id]||0)+1;const max=Math.max(0,...Object.values(n));
+  const who=PEOPLE.filter(p=>att[p.id]),left=who.filter(p=>!v[p.id]).map(p=>p.n);
+  const add=recipes.filter(x=>fits(x,att)&&!d.cands.includes(x.id));
+  return `<div class="vote"><div class="meta">Abstimmung – jeder tippt seinen Namen beim Lieblingsgericht an${left.length?` · fehlt noch: ${esc(left.join(', '))}`:' · alle haben abgestimmt'}</div>
+  ${d.cands.map(id=>{const x=rById(id);if(!x)return'';return `<div class="vc${max&&n[id]===max?' lead':''}"><div class="top"><span>${esc(x.name)}</span><span>${n[id]||0} ${n[id]===1?'Stimme':'Stimmen'}</span></div>
+   <div class="ppl">${who.map(p=>`<button class="p${v[p.id]===id?' on':''}${p.veg?' v':''}" data-vote="${k}" data-c="${esc(id)}" data-p="${esc(p.id)}" aria-pressed="${v[p.id]===id}">${esc(p.n)}</button>`).join('')}</div></div>`}).join('')}
+  <div class="row" style="margin-top:8px">${add.length?`<select data-addc="${k}" aria-label="Gericht zur Abstimmung hinzufügen"><option value="">+ Gericht dazu …</option>${add.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`:''}
+  <button class="pri" data-decide="${k}">Entscheiden</button><button data-endvote="${k}">Abbrechen</button></div></div>`}
 function suggest(k,taken){
   const att=attOf(k),used=new Set([...Object.values(plan.days||{}),...Object.values(prevPlan.days||{})].map(d=>d?.r).concat(taken||[]));
   const pool=recipes.filter(r=>fits(r,att));const fresh=pool.filter(r=>!used.has(r.id));
@@ -232,12 +253,12 @@ const pName=id=>PEOPLE.find(p=>p.id===id)?.n||'Jemand';
 function renderWishes(){
   const open=wishes.filter(w=>!w.done),done=wishes.filter(w=>w.done).slice(-5).reverse();
   const dayOpts='<option value="">Einplanen …</option>'+DAYS.map(([k,n,o])=>`<option value="${k}">${n}, ${dfmt(add(mon,o))}</option>`).join('');
-  $('#v-wuensche').innerHTML=`<p class="note">Jeder kann sich Gerichte wünschen. Wünsche kommen bei „Vorschlag“ und „Leere Abende füllen“ zuerst dran.</p>
+  $('#v-wuensche').innerHTML=`<p class="note">Jeder kann sich Gerichte wünschen. Wünsche kommen bei „Vorschlag“ und „Leere Abende füllen“ zuerst dran. Wünsche für einen bestimmten Tag landen dort in der Abstimmung.</p>
   <form class="wf" id="wf"><select id="wwho" aria-label="Wer wünscht">${PEOPLE.map(p=>`<option value="${esc(p.id)}"${p.id===me?' selected':''}>${esc(p.n)}</option>`).join('')}</select>
   <select id="wr" aria-label="Rezept"><option value="">Neues Gericht …</option>${recipes.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('')}</select>
-  <input id="wt" placeholder="oder Wunsch eintippen, z. B. Pfannkuchen" aria-label="Wunsch"><button class="pri">Wünschen</button></form>
+  <select id="wday" aria-label="Für welchen Tag"><option value="">Tag egal</option>${DAYS.map(([k,n,o])=>`<option value="${k}">${n}, ${dfmt(add(mon,o))}</option>`).join('')}</select><input id="wt" placeholder="oder Wunsch eintippen, z. B. Pfannkuchen" aria-label="Wunsch"><button class="pri">Wünschen</button></form>
   <h2>${open.length===1?'1 offener Wunsch':open.length?open.length+' offene Wünsche':'Keine offenen Wünsche'}</h2>
-  ${open.map(w=>{const r=rById(w.r);return `<div class="wish"><p><b>${esc(pName(w.who))}</b> wünscht sich ${esc(r?r.name:w.text)}</p><div class="row">
+  ${open.map(w=>{const r=rById(w.r);return `<div class="wish"><p><b>${esc(pName(w.who))}</b> wünscht sich ${esc(r?r.name:w.text)}${w.day?` <span class="tag">${esc((ALLDAYS.find(d=>d[0]===w.day)||[,''])[1])}${w.week&&w.week!==wid(mon)?' ('+esc(w.week.slice(5))+')':''}</span>`:''}</p><div class="row">
    ${r?`<select data-wplan="${esc(w.id)}" aria-label="Wunsch einplanen">${dayOpts}</select>`:`<button class="pri" data-wclaude="${esc(w.id)}"${ki?'':' hidden'}>Rezept per KI</button><button data-wself="${esc(w.id)}">Selbst anlegen</button>`}
    <button data-wdel="${esc(w.id)}" aria-label="Wunsch löschen">✕</button></div></div>`}).join('')}
   ${done.map(w=>`<div class="wish done"><p>${esc(pName(w.who))}: ${esc(rById(w.r)?.name||w.text)} – eingeplant</p></div>`).join('')}
@@ -279,6 +300,7 @@ addEventListener('hashchange',render);
 // ---- Ereignisse ----
 document.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.k)setDay(t.dataset.k,{r:t.value||null});
+  else if(t.dataset.addc){if(t.value){const k=t.dataset.addc;setDay(k,{cands:[...(dayOf(k).cands||[]),t.value]})}}
   else if(t.dataset.wplan){const w=wishes.find(x=>x.id===t.dataset.wplan);if(w&&t.value)setDay(t.value,{r:w.r})}
   else if(t.id==='kf'){settings={...settings,kidFactor:parseFloat(t.value.replace(',','.'))};save('settings/main',settings);render()}
   else if(t.dataset.ck){shop={...shop,checked:{...shop.checked,[t.dataset.ck]:t.checked}};save('shop/'+wid(mon),shop);render()}
@@ -287,6 +309,10 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   if(b.dataset.att){const k=b.dataset.att,a=attOf(k);a[b.dataset.p]=!a[b.dataset.p];setDay(k,{att:a})}
   else if(b.dataset.sug){const k=b.dataset.sug,id=suggest(k);if(id)setDay(k,{r:id})}
   else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
+  else if(b.dataset.startvote){const k=b.dataset.startvote,c=voteCands(k);if(c.length<2)msg('Für eine Abstimmung braucht es mindestens zwei passende Rezepte.');else setDay(k,{cands:c,votes:{}})}
+  else if(b.dataset.vote){const k=b.dataset.vote,v={...(dayOf(k).votes||{})};if(v[b.dataset.p]===b.dataset.c)delete v[b.dataset.p];else v[b.dataset.p]=b.dataset.c;setDay(k,{votes:v})}
+  else if(b.dataset.decide){const k=b.dataset.decide,id=decide(k);if(id)setDay(k,{r:id,cands:null,votes:null})}
+  else if(b.dataset.endvote)setDay(b.dataset.endvote,{cands:null,votes:null});
   else if(b.id==='ideas')getIdeas();
   else if(b.id==='impb'){let n=0;try{let v=parseJSON($('#imp').value);for(const x of(Array.isArray(v)?v:[v]).map(clean).filter(Boolean)){save('recipes/'+slug(x.name),{name:x.name,tags:x.tags,steps:x.steps,ing:x.ing});n++}$('#impm').textContent=n?n+' Rezept(e) importiert':'Nichts Brauchbares gefunden';if(n)$('#imp').value=''}catch(e){$('#impm').textContent=e.message}}
   else if(b.id==='todo'){const ch=shop.checked||{};const items=shopItems().filter(x=>!ch[x.key]).map(x=>`${x.n} (${fmtQ(x.q,x.u)})`).concat((shop.extras||[]).filter(x=>!x.done).map(x=>x.t));b.disabled=true;api('POST','api/todo',{items}).then(d=>{b.textContent=d.added+' Einträge übernommen'},e=>{b.disabled=false;msg(e.message)})}
@@ -316,7 +342,7 @@ document.addEventListener('submit',e=>{e.preventDefault();
     if(pendingWish){const w=wishes.find(x=>x.id===pendingWish);if(w){const{id:wi,...d}=w;save('wishes/'+wi,{...d,r:id})}pendingWish=null}
     closeR()}
   if(e.target.id==='wf'){const who=$('#wwho').value,r=$('#wr').value,t=$('#wt').value.trim();if(!r&&!t)return;
-    const id=Date.now().toString(36);save('wishes/'+id,{who,r:r||null,text:r?(rById(r)?.name||''):t,done:false,at:new Date().toISOString()});$('#wt').value='';$('#wr').value=''}});
+    const id=Date.now().toString(36);const day=$('#wday').value||null;save('wishes/'+id,{who,r:r||null,text:r?(rById(r)?.name||''):t,done:false,at:new Date().toISOString(),day,week:day?wid(mon):null});$('#wt').value='';$('#wr').value=''}});
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov')closeR()});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeR()});
 
