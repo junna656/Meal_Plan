@@ -118,6 +118,7 @@ class Handler(BaseHTTPRequestHandler):
                 "personen": o.get("personen", []),
                 "tage": o.get("tage", "mo,di,mi,do"),
                 "kinderportion": o.get("kinderportion", 0.6),
+                "feste": o.get("feste_abende", []),
                 "todo": bool(o.get("einkaufsliste")) and bool(TOKEN),
                 "ki": bool(o.get("ki_entity")) and bool(TOKEN),
                 "user": self.headers.get("X-Remote-User-Display-Name") or self.headers.get("X-Remote-User-Name") or "",

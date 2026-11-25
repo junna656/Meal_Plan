@@ -8,6 +8,12 @@ configuration:
   tage:
     name: Geplante Tage
     description: Wochentage im Plan, z. B. "mo,di,mi,do" (mo di mi do fr sa so).
+  feste_abende:
+    name: Feste Abende
+    description: >-
+      Gerichte, die an einem Wochentag fest gesetzt sind. wenn: "immer", "alle" (nur wenn alle da sind)
+      oder "alle_erster_im_monat" (erster solcher Tag im Monat, an dem alle da sind).
+      Gibt es ein Rezept mit genau diesem Namen, kommen seine Zutaten auf die Einkaufsliste.
   kinderportion:
     name: Kinderportion
     description: Startwert, wie viel eine Kinderportion im Vergleich zu Erwachsenen ist.
