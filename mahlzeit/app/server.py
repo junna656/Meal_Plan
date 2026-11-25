@@ -18,6 +18,11 @@ OPTIONS = DATA / "options.json"
 SEED = Path(__file__).parent / "seed.json"
 PORT = int(os.environ.get("PORT", "8099"))
 TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
+if not TOKEN:
+    try:  # s6-overlay legt die Container-Umgebung hier ab
+        TOKEN = Path("/run/s6/container_environment/SUPERVISOR_TOKEN").read_text().strip()
+    except Exception:
+        TOKEN = ""
 CORE = os.environ.get("CORE_URL", "http://supervisor/core/api")
 PATH_RE = re.compile(r"^(recipes|wishes|plans|shop|settings)/[A-Za-z0-9_\-.:@+~]{1,120}$")
 MAX_BODY = 256 * 1024
@@ -184,5 +189,5 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Mahlzeit-Planer läuft auf Port {PORT}", flush=True)
+    print(f"Mahlzeit-Planer läuft auf Port {PORT} (HA-Zugriff: {'ja' if TOKEN else 'nein'})", flush=True)
     ThreadingHTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
