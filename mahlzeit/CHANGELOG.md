@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.1
+- Auswahl „Kinderportion“ aus der Wochenansicht entfernt; der Wert steht nur noch in der App-Konfiguration.
+
 ## 1.7.0
 - Neues Design: kompakte Wochenansicht (eine Zeile pro Tag, Tippen klappt auf), Punkte-Streifen Mo–So im festen Kopf.
 - Anwesenheit als Kreise mit Initialen, getrennt von der Abstimmung.

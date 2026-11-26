@@ -174,7 +174,7 @@ def week_summary(week_id):
     by_name = {str(d.get("name", "")).lower(): d for d in recipes.values()}
     plan = (docs.get(f"plans/{week_id}") or {}).get("days") or {}
     shop = docs.get(f"shop/{week_id}") or {}
-    kid = float((docs.get("settings/main") or {}).get("kidFactor") or o.get("kinderportion") or 0.6)
+    kid = float(o.get("kinderportion") or 0.6)
     tage = [t.strip()[:2] for t in str(o.get("tage", "mo,di,mi,do")).lower().split(",")]
     lines, items = [], {}
     for k in [d for d in ORDER if d in tage]:

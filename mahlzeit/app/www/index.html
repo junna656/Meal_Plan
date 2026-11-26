@@ -229,8 +229,7 @@ function renderWeek(){
   const nOpen=DAYS.filter(([k])=>dayInfo(k).voting).length;
   $('#v-woche').innerHTML=`${nOpen?`<p class="warn">${nOpen} ${nOpen===1?'Abstimmung läuft':'Abstimmungen laufen'} – ${locked()?'werden jetzt ausgewertet':'bis '+dlText()}.</p>`:''}${h}
   <p class="note" style="margin-top:14px">Tag antippen zum Planen. Die Kreise zeigen, wer mitisst – antippen ändert es für diesen Abend.</p>
-  <div class="bar"><button class="pri" id="fill">Leere Abende füllen</button>
-  <label class="meta">Kinderportion <select id="kf">${[0.5,0.6,0.7,0.8,1].map(v=>`<option${v==settings.kidFactor?' selected':''}>${nf(v)}</option>`).join('')}</select></label></div>`;
+  <div class="bar"><button class="pri" id="fill">Leere Abende füllen</button></div>`;
   if(!recipes.length)$('#v-woche').insertAdjacentHTML('afterbegin','<p class="note">Noch keine Rezepte – lege unter „Rezepte“ welche an.</p>');
 }
 const deadline=()=>{const s=add(mon,-2);s.setHours(9,0,0,0);return s};
@@ -439,7 +438,7 @@ function derive(){
   const all=Object.entries(docs),get=p=>docs[p];
   recipes=all.filter(([p])=>p.startsWith('recipes/')).map(([p,d])=>({id:p.slice(8),...d})).sort((a,b)=>String(a.name).localeCompare(String(b.name),'de'));
   wishes=all.filter(([p])=>p.startsWith('wishes/')).map(([p,d])=>({id:p.slice(7),...d})).sort((a,b)=>String(a.at).localeCompare(String(b.at)));
-  settings={kidFactor:+CFG.kinderportion||0.6,...(get('settings/main')||{})};
+  settings={kidFactor:+CFG.kinderportion||0.6};
   plan={days:{},...(get('plans/'+wid(mon))||{})};prevPlan={days:{},...(get('plans/'+wid(add(mon,-7)))||{})};
   shop={checked:{},extras:[],...(get('shop/'+wid(mon))||{})}}
 const typing=()=>{const a=document.activeElement;return $('#ov').classList.contains('on')||(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName))};
