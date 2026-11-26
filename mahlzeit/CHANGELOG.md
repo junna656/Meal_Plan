@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0
+- Neues Design: kompakte Wochenansicht (eine Zeile pro Tag, Tippen klappt auf), Punkte-Streifen Mo–So im festen Kopf.
+- Anwesenheit als Kreise mit Initialen, getrennt von der Abstimmung.
+- Feste Leiste unten mit Zählern (Abstimmungen, offene Einkäufe, Wünsche).
+- Einkaufsliste nach Supermarkt-Bereichen sortiert, auch beim Kopieren.
+
 ## 1.6.0
 - Rezept-Editor: Chat „Mit KI anpassen“ – Änderungswünsche eintippen, die KI passt Zutaten und Zubereitung im Formular an.
 
