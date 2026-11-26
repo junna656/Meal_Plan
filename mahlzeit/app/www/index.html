@@ -88,7 +88,7 @@ nav a{padding-inline:2px;font-size:15px}
 .ing{display:grid;grid-template-columns:minmax(0,1fr) 5.2em 5.2em 7.5em 44px;gap:6px;margin-bottom:6px}
 .ing input,.ing select{min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 8px;width:100%}
 @media(max-width:600px){.day{grid-template-columns:minmax(0,1fr)}.day b small{display:inline;margin-left:8px}
-.ing{grid-template-columns:minmax(0,1fr) 5em 4.6em;}.ing select.t{grid-column:1/3}}
+.ing{grid-template-columns:minmax(0,1fr) 4.4em 5.6em;}.ing select.t{grid-column:1/3}}
 @media(prefers-reduced-motion:no-preference){.day,.rc,.list li{animation:in .25s ease both}@keyframes in{from{opacity:0;transform:translateY(4px)}}}
 </style>
 </head>
@@ -246,6 +246,7 @@ function openRecipe(r){
   r=r||{id:'',name:'',tags:[],steps:'',ing:[{}]};
   $('#rf').innerHTML=`<h2 style="margin-top:0">${r.id?'Rezept bearbeiten':'Neues Rezept'}</h2>
   <label for="rn">Name</label><input id="rn" required value="${esc(r.name)}" style="width:100%">
+  ${ki?'<div class="row" style="margin-top:8px"><button type="button" class="pri" id="kifill">Mit KI ausfüllen</button><span class="meta" id="kistat">Titel eingeben, dann ausfüllen lassen.</span></div>':''}
   <label for="rt">Schlagwörter (mit Komma)</label><input id="rt" value="${esc((r.tags||[]).join(', '))}" style="width:100%">
   <label>Zutaten pro Erwachsenenportion</label><div id="ings">${(r.ing||[]).map(ingRow).join('')}</div>
   <button type="button" id="addi">Zutat hinzufügen</button>
@@ -292,6 +293,11 @@ async function getIdeas(){if(!ki||busy)return;busy=true;ideaMsg='';render();
     const res=await kiJson(`${RULES()}\nSchon vorhandene Rezepte (nicht wiederholen): ${have}\nOffene Wünsche: ${wish}\nSchlage 3 neue Abendessen vor, mindestens 2 komplett vegetarisch. Antworte nur mit einem JSON-Array aus 3 Objekten dieser Form: ${FMT}`);
     ideas=(Array.isArray(res)?res:[]).map(clean).filter(Boolean);if(!ideas.length)ideaMsg='Keine brauchbaren Ideen bekommen, bitte nochmal.'}
   catch(e){ideaMsg=sErr(e)}busy=false;render()}
+const aiRecipe=async name=>{const x=clean(await kiJson(`${RULES()}\nSchreibe ein Rezept für: "${name}". Antworte nur mit einem JSON-Objekt dieser Form: ${FMT}`));if(!x)throw new Error('Kein brauchbares Rezept bekommen');return x};
+async function kiFill(b){const name=$('#rn').value.trim(),st=$('#kistat');if(!name){st.textContent='Bitte erst einen Titel eingeben.';$('#rn').focus();return}
+  b.disabled=true;st.textContent='Die KI schreibt das Rezept …';
+  try{const x=await aiRecipe(name);if(!$('#ov').classList.contains('on'))return;$('#rt').value=x.tags.join(', ');$('#ings').innerHTML=x.ing.map(ingRow).join('');$('#rs').value=x.steps;st.textContent='Fertig – bitte prüfen und speichern.'}
+  catch(e){st.textContent=sErr(e)}finally{b.disabled=false}}
 async function recipeFromWish(id,b){const w=wishes.find(x=>x.id===id);if(!w||!ki)return;b.disabled=true;b.textContent='KI schreibt …';
   try{const x=clean(await kiJson(`${RULES()}\nSchreibe ein Rezept für: "${w.text}". Antworte nur mit einem JSON-Objekt dieser Form: ${FMT}`));
     if(!x)throw{code:'invalid_json'};pendingWish=id;openRecipe({id:'',...x});pendingWish=id}
@@ -324,6 +330,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   else if(b.dataset.vote){if(locked())return;const k=b.dataset.vote,v={...(dayOf(k).votes||{})};if(v[b.dataset.p]===b.dataset.c)delete v[b.dataset.p];else v[b.dataset.p]=b.dataset.c;setDay(k,{votes:v})}
   else if(b.dataset.decide){const k=b.dataset.decide,id=decide(k);if(id)setDay(k,{r:id,cands:null,votes:null,voting:null})}
   else if(b.dataset.endvote)setDay(b.dataset.endvote,{cands:null,votes:null,voting:null});
+  else if(b.id==='kifill')kiFill(b);
   else if(b.id==='ideas')getIdeas();
   else if(b.id==='impb'){let n=0;try{let v=parseJSON($('#imp').value);for(const x of(Array.isArray(v)?v:[v]).map(clean).filter(Boolean)){save('recipes/'+slug(x.name),{name:x.name,tags:x.tags,steps:x.steps,ing:x.ing});n++}$('#impm').textContent=n?n+' Rezept(e) importiert':'Nichts Brauchbares gefunden';if(n)$('#imp').value=''}catch(e){$('#impm').textContent=e.message}}
   else if(b.id==='todo'){const ch=shop.checked||{};const items=shopItems().filter(x=>!ch[x.key]).map(x=>`${x.n} (${fmtQ(x.q,x.u)})`).concat((shop.extras||[]).filter(x=>!x.done).map(x=>x.t));b.disabled=true;api('POST','api/todo',{items}).then(d=>{b.textContent=d.added+' Einträge übernommen'},e=>{b.disabled=false;msg(e.message)})}

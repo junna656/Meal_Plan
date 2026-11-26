@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.0
+- Rezept-Editor: „Mit KI ausfüllen“ – Titel eingeben, Schlagwörter, Zutaten und Zubereitung werden ergänzt.
+
 ## 1.4.3
 - KI-Rezepte: Zutaten ohne Fleisch werden immer für alle gerechnet; Einheit „Prise“.
 
