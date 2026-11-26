@@ -96,7 +96,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .strip button{background:transparent;color:var(--headink);min-height:40px;padding:2px 0;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:10px}
 .strip button i{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);display:block}
 .strip button.s-ok i{background:#6fcf94;border-color:#6fcf94}.strip button.s-vote i{background:var(--mus);border-color:var(--mus)}.strip button.s-warn i{background:#ff6a4d;border-color:#ff6a4d}
-.bn{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--bg);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.bn{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--bg);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .bn a{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;color:var(--soft);text-decoration:none;font-size:12px;font-weight:600;border-radius:12px}
 .bn a i{font-size:23px;line-height:1}.bn a.on{color:var(--tom)}
 .bd{position:absolute;top:2px;left:calc(50% + 6px);background:var(--tom);color:#fff;font-size:11px;font-weight:700;border-radius:99px;padding:0 6px;line-height:17px;min-width:18px;text-align:center}.bd:empty{display:none}
@@ -112,6 +112,16 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .day.open .dh .ds small{display:none}
 .dx{padding:0 0 16px}
 .day.open{background:var(--card);margin:0 calc(-1*max(5vw,16px));padding:0 max(5vw,16px)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-width:0}
+.tile.wished{border-color:var(--tom)}.tile.open{grid-column:1/-1}.tile.free{border-style:dashed;border-color:var(--tom)}
+.tb{background:transparent;text-align:left;padding:12px 12px 6px;display:flex;flex-direction:column;gap:6px;min-height:0;border-radius:14px 14px 0 0;flex:1}
+.tn{font:400 18px/1.2 "Young Serif",Georgia,serif;overflow-wrap:anywhere}
+.tt .tag{font-size:12px;margin:0 4px 4px 0}
+.tw{padding:0 12px 6px;font-size:13px;color:var(--tom);font-weight:600}
+.hb{margin:4px 10px 10px;min-height:38px;font-size:14px;font-weight:600}.hb.on{background:var(--tom);color:#fff}
+.wp{padding:0 12px 12px;display:grid;gap:8px}.wp select{flex:1 1 120px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:0 8px}
+.wl{font-size:14px}.wl span{flex:1 1 100px;font-weight:600}
 .cat{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--soft);margin:18px 0 2px}.cat i{font-size:18px}
 @media(max-width:360px){.dn{width:52px;font-size:18px}.av{margin-left:64px}}
 @media(prefers-reduced-motion:no-preference){.day,.rc,.list li{animation:in .25s ease both}@keyframes in{from{opacity:0;transform:translateY(4px)}}}
@@ -130,10 +140,9 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
   <div id="msg"></div>
   <section id="v-woche"></section>
   <section id="v-einkauf" hidden></section>
-  <section id="v-wuensche" hidden></section>
   <section id="v-rezepte" hidden></section>
 </div></main>
-<nav class="bn" aria-label="Bereiche"><a href="#woche" data-t="woche"><i class="ti ti-calendar-week" aria-hidden="true"></i>Woche<span class="bd" id="b-woche"></span></a><a href="#einkauf" data-t="einkauf"><i class="ti ti-shopping-cart" aria-hidden="true"></i>Einkauf<span class="bd" id="b-einkauf"></span></a><a href="#wuensche" data-t="wuensche"><i class="ti ti-heart" aria-hidden="true"></i>Wünsche<span class="bd" id="b-wuensche"></span></a><a href="#rezepte" data-t="rezepte"><i class="ti ti-chef-hat" aria-hidden="true"></i>Rezepte<span class="bd" id="b-rezepte"></span></a></nav>
+<nav class="bn" aria-label="Bereiche"><a href="#woche" data-t="woche"><i class="ti ti-calendar-week" aria-hidden="true"></i>Woche<span class="bd" id="b-woche"></span></a><a href="#einkauf" data-t="einkauf"><i class="ti ti-shopping-cart" aria-hidden="true"></i>Einkauf<span class="bd" id="b-einkauf"></span></a><a href="#rezepte" data-t="rezepte"><i class="ti ti-chef-hat" aria-hidden="true"></i>Rezepte<span class="bd" id="b-rezepte"></span></a></nav>
 <div class="ov" id="ov"><form class="f" id="rf"></form></div>
 <script>
 {
@@ -282,11 +291,39 @@ function renderShop(){
   <div class="bar">${CFG.todo?'<button class="pri" id="todo">In HA-Einkaufsliste</button>':''}<button id="copy">Liste kopieren</button><button id="reset">Haken zurücksetzen</button></div>`}
 
 // ---- Rezepte ----
+let wOpen='',q='';
+function wishTag(w){return `${esc(pName(w.who))}${w.day?' · '+esc((ALLDAYS.find(d=>d[0]===w.day)||[,''])[1].slice(0,2)):''}`}
 function renderRecipes(){
-  $('#v-rezepte').innerHTML=`<div class="bar" style="margin-top:0"><button class="pri" id="newr">Neues Rezept</button></div>
-  ${recipes.length?'':'<p class="note">Noch keine Rezepte gespeichert.</p>'}
-  ${recipes.map(r=>`<div class="rc"><div><p class="dish">${esc(r.name)}</p>${!hasMeat(r)?'<span class="tag v">vegetarisch</span>':hasAlt(r)?'<span class="tag v">mit veg. Variante</span>':'<span class="tag">mit Fleisch</span>'}${(r.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div><button data-edit="${esc(r.id)}">Bearbeiten</button></div>`).join('')}
-  <p class="note" style="margin-top:18px">Mengen gelten pro Erwachsenenportion. „Fleisch“ wird nur für die gerechnet, die Fleisch essen, „veg. Ersatz“ nur für die, die vegetarisch essen.</p>`}
+  const open=wishes.filter(w=>!w.done),byR={};for(const w of open)if(w.r)(byR[w.r]=byR[w.r]||[]).push(w);
+  const free=open.filter(w=>!w.r||!rById(w.r)),s=q.trim().toLowerCase();
+  const list=recipes.filter(x=>!s||String(x.name).toLowerCase().includes(s)||(x.tags||[]).some(t=>String(t).toLowerCase().includes(s))||(x.ing||[]).some(z=>String(z.n).toLowerCase().includes(s)))
+    .sort((a,b)=>(byR[b.id]?.length||0)-(byR[a.id]?.length||0)||String(a.name).localeCompare(String(b.name),'de'));
+  const who=`${PEOPLE.map(p=>`<option value="${esc(p.id)}"${p.id===me?' selected':''}>${esc(p.n)}</option>`).join('')}`;
+  const days=`<option value="">Tag egal</option>${DAYS.map(([k,n,o])=>`<option value="${k}">${n}, ${dfmt(add(mon,o))}</option>`).join('')}`;
+  const plan='<option value="">Einplanen …</option>'+DAYS.map(([k,n,o])=>`<option value="${k}">${n}, ${dfmt(add(mon,o))}</option>`).join('');
+  const tile=x=>{const ws=byR[x.id]||[],op=wOpen===x.id;
+    return `<div class="tile${ws.length?' wished':''}${op?' open':''}">
+    <button class="tb" data-edit="${esc(x.id)}" aria-label="${esc(x.name)} bearbeiten"><span class="tn">${esc(x.name)}</span>
+     <span class="tt">${!hasMeat(x)?'<span class="tag v">vegetarisch</span>':hasAlt(x)?'<span class="tag v">Veggie-Variante</span>':'<span class="tag">Fleisch</span>'}${(x.tags||[]).slice(0,2).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</span></button>
+    ${ws.length?`<div class="tw"><i class="ti ti-heart" aria-hidden="true"></i> ${ws.map(wishTag).join(', ')}</div>`:''}
+    <button class="hb${ws.length?' on':''}" data-wopen="${esc(x.id)}" aria-expanded="${op}">${op?'Schließen':ws.length?'Wünsche ('+ws.length+')':'Wünschen'}</button>
+    ${op?`<div class="wp"><div class="row"><select id="wpw" aria-label="Wer wünscht">${who}</select><select id="wpd" aria-label="Für welchen Tag">${days}</select><button class="pri" data-wadd="${esc(x.id)}">Wünschen</button></div>
+     ${ws.map(w=>`<div class="row wl"><span>${wishTag(w)}</span><select data-wplan="${esc(w.id)}" aria-label="Wunsch einplanen">${plan}</select><button data-wdel="${esc(w.id)}" aria-label="Wunsch löschen">✕</button></div>`).join('')}</div>`:''}
+    </div>`};
+  $('#v-rezepte').innerHTML=`<div class="row" style="margin-bottom:12px"><input id="rq" type="search" placeholder="Rezept oder Zutat suchen" value="${esc(q)}" aria-label="Rezepte suchen" style="flex:1 1 180px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 12px"><button class="pri" id="newr">Neues Rezept</button></div>
+  ${free.length?`<div class="cat"><i class="ti ti-heart" aria-hidden="true"></i>Wünsche ohne Rezept</div><div class="tiles">${free.map(w=>`<div class="tile free"><div class="tn" style="padding:12px 12px 0">${esc(w.text)}</div><div class="tw"><i class="ti ti-heart" aria-hidden="true"></i> ${wishTag(w)}</div>
+    <div class="row" style="padding:0 12px 12px">${ki?`<button class="pri" data-wclaude="${esc(w.id)}">Rezept per KI</button>`:''}<button data-wself="${esc(w.id)}">Anlegen</button><button data-wdel="${esc(w.id)}" aria-label="Wunsch löschen">✕</button></div></div>`).join('')}</div>`:''}
+  <div class="cat"><i class="ti ti-chef-hat" aria-hidden="true"></i>${list.length} ${list.length===1?'Rezept':'Rezepte'}${s?' gefunden':''}</div>
+  <div class="tiles">${list.map(tile).join('')||'<p class="note">Keine Rezepte gefunden.</p>'}</div>
+  <details class="note" style="margin-top:18px"><summary>Etwas wünschen, das es noch nicht gibt</summary>
+  <form class="wf" id="wf"><select id="wwho" aria-label="Wer wünscht">${who}</select><select id="wday" aria-label="Für welchen Tag">${days}</select><input id="wt" placeholder="z. B. Pfannkuchen" aria-label="Wunsch"><button class="pri">Wünschen</button></form></details>
+  ${ki?`<div class="cat"><i class="ti ti-sparkles" aria-hidden="true"></i>Neue Ideen von der KI</div>
+  <button class="pri" id="ideas"${busy?' disabled':''}>${busy?'Die KI denkt nach …':ideas.length?'Andere Ideen':'3 Ideen holen'}</button>
+  ${ideaMsg?`<p class="warn">${esc(ideaMsg)}</p>`:''}
+  <div class="tiles" style="margin-top:10px">${ideas.map((x,i)=>`<div class="tile idea2"><div class="tn" style="padding:12px 12px 0">${esc(x.name)}</div><p class="meta" style="padding:0 12px;margin:4px 0">${esc(x.why)}</p>
+   <div class="row" style="padding:0 12px 12px"><button data-take="${i}"${x.added?' disabled':''}>${x.added?'Gespeichert':'Übernehmen'}</button></div></div>`).join('')}</div>`:''}
+  <details class="note" style="margin-top:18px"><summary>Rezepte als Text importieren</summary><p>Ein JSON-Rezept oder eine Liste davon einfügen, z. B. von Claude erstellt.</p><textarea id="imp" style="width:100%;min-height:120px" aria-label="Rezept-JSON"></textarea><button id="impb">Importieren</button> <span id="impm"></span></details>
+  <p class="note" style="margin-top:18px">Kachel antippen zum Bearbeiten. Wünsche kommen bei „Vorschlag“ und „Leere Abende füllen“ zuerst dran; Wünsche für einen Tag landen dort in der Abstimmung.</p>`}
 function ingRow(x={}){return `<div class="ing"><input class="n" placeholder="Zutat" value="${esc(x.n)}" aria-label="Zutat"><input class="q" type="number" step="any" min="0" placeholder="Menge" value="${esc(x.q)}" aria-label="Menge"><select class="u" aria-label="Einheit">${UNITS.map(u=>`<option${u===x.u?' selected':''}>${u}</option>`).join('')}</select><select class="t" aria-label="Art">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}"${k===(x.t||'all')?' selected':''}>${v}</option>`).join('')}</select><button type="button" class="del" aria-label="Zeile löschen">✕</button></div>`}
 function openRecipe(r){
   r=r||{id:'',name:'',tags:[],steps:'',ing:[{}]};
@@ -308,25 +345,7 @@ const slug=n=>String(n).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').re
 
 // ---- Wünsche & Claude ----
 const pName=id=>PEOPLE.find(p=>p.id===id)?.n||'Jemand';
-function renderWishes(){
-  const open=wishes.filter(w=>!w.done),done=wishes.filter(w=>w.done).slice(-5).reverse();
-  const dayOpts='<option value="">Einplanen …</option>'+DAYS.map(([k,n,o])=>`<option value="${k}">${n}, ${dfmt(add(mon,o))}</option>`).join('');
-  $('#v-wuensche').innerHTML=`<p class="note">Jeder kann sich Gerichte wünschen. Wünsche kommen bei „Vorschlag“ und „Leere Abende füllen“ zuerst dran. Wünsche für einen bestimmten Tag landen dort in der Abstimmung.</p>
-  <form class="wf" id="wf"><select id="wwho" aria-label="Wer wünscht">${PEOPLE.map(p=>`<option value="${esc(p.id)}"${p.id===me?' selected':''}>${esc(p.n)}</option>`).join('')}</select>
-  <select id="wr" aria-label="Rezept"><option value="">Neues Gericht …</option>${recipes.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('')}</select>
-  <select id="wday" aria-label="Für welchen Tag"><option value="">Tag egal</option>${DAYS.map(([k,n,o])=>`<option value="${k}">${n}, ${dfmt(add(mon,o))}</option>`).join('')}</select><input id="wt" placeholder="oder Wunsch eintippen, z. B. Pfannkuchen" aria-label="Wunsch"><button class="pri">Wünschen</button></form>
-  <h2>${open.length===1?'1 offener Wunsch':open.length?open.length+' offene Wünsche':'Keine offenen Wünsche'}</h2>
-  ${open.map(w=>{const r=rById(w.r);return `<div class="wish"><p><b>${esc(pName(w.who))}</b> wünscht sich ${esc(r?r.name:w.text)}${w.day?` <span class="tag">${esc((ALLDAYS.find(d=>d[0]===w.day)||[,''])[1])}${w.week&&w.week!==wid(mon)?' ('+esc(w.week.slice(5))+')':''}</span>`:''}</p><div class="row">
-   ${r?`<select data-wplan="${esc(w.id)}" aria-label="Wunsch einplanen">${dayOpts}</select>`:`<button class="pri" data-wclaude="${esc(w.id)}"${ki?'':' hidden'}>Rezept per KI</button><button data-wself="${esc(w.id)}">Selbst anlegen</button>`}
-   <button data-wdel="${esc(w.id)}" aria-label="Wunsch löschen">✕</button></div></div>`}).join('')}
-  ${done.map(w=>`<div class="wish done"><p>${esc(pName(w.who))}: ${esc(rById(w.r)?.name||w.text)} – eingeplant</p></div>`).join('')}
-  ${ki?`<h2>Neue Ideen von der KI</h2>`:''}
-  ${ki?`<p class="note">Drei neue Abendessen, passend für euch: kinderfreundlich, meist vegetarisch, Fleisch nur mit veg. Variante.</p>
-  <button class="pri" id="ideas"${busy?' disabled':''}>${busy?'Die KI denkt nach …':ideas.length?'Andere Ideen':'Ideen holen'}</button>
-  ${ideaMsg?`<p class="warn">${esc(ideaMsg)}</p>`:''}
-  ${ideas.map((x,i)=>`<div class="idea"><p class="dish">${esc(x.name)}</p><p>${esc(x.why)}</p>${(x.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}
-   <p class="meta">${esc(x.ing.map(z=>z.n).join(', '))}</p><button data-take="${i}"${x.added?' disabled':''}>${x.added?'In Rezepten gespeichert':'In Rezepte übernehmen'}</button></div>`).join('')}`
-  +'<details class="note" style="margin-top:22px"><summary>Rezepte als Text importieren</summary><p>Ein JSON-Rezept oder eine Liste davon einfügen, z. B. von Claude erstellt.</p><textarea id="imp" style="width:100%;min-height:120px" aria-label="Rezept-JSON"></textarea><button id="impb">Importieren</button> <span id="impm"></span></details>':'<details class="note" style="margin-top:22px"><summary>Rezepte als Text importieren</summary><p>Ein JSON-Rezept oder eine Liste davon einfügen, z. B. von Claude erstellt.</p><textarea id="imp" style="width:100%;min-height:120px" aria-label="Rezept-JSON"></textarea><button id="impb">Importieren</button> <span id="impm"></span></details>'}`}
+function renderWishes(){}
 const FMT='{"name":"…","why":"ein Satz, warum es passt","tags":["schnell"],"steps":"kurze Zubereitung, 3–5 Sätze","ing":[{"n":"Zutat","q":100,"u":"g","t":"all"}]}';
 const household=()=>`Familie, Abendessen für bis zu ${PEOPLE.filter(p=>!p.kid).length} Erwachsene und ${PEOPLE.filter(p=>p.kid).length} Kinder; ${PEOPLE.filter(p=>p.veg).length} davon essen nur vegetarisch. `;
 const RULES=()=>household()+`Alltagstauglich, höchstens 40 Minuten aktive Zeit, kinderfreundlich, Zutaten aus dem normalen Supermarkt.
@@ -367,14 +386,14 @@ async function recipeFromWish(id,b){const w=wishes.find(x=>x.id===id);if(!w||!ki
   catch(e){b.disabled=false;b.textContent='Rezept per KI';msg(sErr(e))}}
 
 // ---- Darstellung & Reiter ----
-function tab(){return['woche','einkauf','wuensche','rezepte'].includes(location.hash.slice(1))?location.hash.slice(1):'woche'}
+function tab(){const t=location.hash.slice(1);return t==='wuensche'?'rezepte':['woche','einkauf','rezepte'].includes(t)?t:'woche'}
 function render(){
   const{w}=isoWeek(mon);$('#wklabel').innerHTML=`KW ${w} <small>${dfmt(mon)} – ${dfmt(add(mon,lastOff()))} · ${w%2?'ungerade':'gerade'} Woche</small>`;
   const t=tab();document.querySelectorAll('.bn a').forEach(a=>{a.classList.toggle('on',a.dataset.t===t);a.setAttribute('aria-current',a.dataset.t===t?'page':'false')});
   $('#strip').innerHTML=DAYS.map(([k,n])=>{const s=dayInfo(k).st;return `<button class="${s}" data-strip="${k}" aria-label="${n}: ${s==='s-ok'?'geplant':s==='s-vote'?'Abstimmung läuft':s==='s-warn'?'passt nicht':'offen'}">${n.slice(0,2)}<i></i></button>`}).join('');
   const sh=shopItems(),ch=shop.checked||{},nv=DAYS.filter(([k])=>dayInfo(k).voting).length,ns=sh.filter(x=>!ch[x.key]).length+(shop.extras||[]).filter(x=>!x.done).length,nw=wishes.filter(w=>!w.done).length;
-  $('#b-woche').textContent=nv||'';$('#b-einkauf').textContent=ns||'';$('#b-wuensche').textContent=nw||'';
-  for(const v of['woche','einkauf','wuensche','rezepte'])$('#v-'+v).hidden=v!==t;
+  $('#b-woche').textContent=nv||'';$('#b-einkauf').textContent=ns||'';$('#b-rezepte').textContent=nw||'';
+  for(const v of['woche','einkauf','rezepte'])$('#v-'+v).hidden=v!==t;
   renderWeek();renderShop();renderWishes();renderRecipes()}
 addEventListener('hashchange',render);
 
@@ -390,6 +409,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   if(b.dataset.att){const k=b.dataset.att,a=attOf(k);a[b.dataset.p]=!a[b.dataset.p];setDay(k,{att:a})}
   else if(b.dataset.sug){const k=b.dataset.sug,id=suggest(k);if(id)setDay(k,{r:id})}
   else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
+  else if(b.dataset.wopen){wOpen=wOpen===b.dataset.wopen?'':b.dataset.wopen;render()}
+  else if(b.dataset.wadd){addWish($('#wpw').value,b.dataset.wadd,'',$('#wpd').value||null);render()}
   else if(b.dataset.dopen){const k=b.dataset.dopen;dOpen.has(k)?dOpen.delete(k):dOpen.add(k);render()}
   else if(b.dataset.strip){const k=b.dataset.strip;if(tab()!=='woche')location.hash='#woche';dOpen.add(k);render();document.getElementById('day-'+k)?.scrollIntoView({behavior:'smooth',block:'center'})}
   else if(b.dataset.vclose){dOpen.delete(b.dataset.vclose);render()}
@@ -417,6 +438,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   else if(b.id==='cancel')closeR();
   else if(b.id==='rdel')$('#rdelq').hidden=false;
   else if(b.id==='rdelyes'){del('recipes/'+$('#rf').dataset.id);closeR()}});
+document.addEventListener('input',e=>{if(e.target.id==='rq'){q=e.target.value;const pos=e.target.selectionStart;renderRecipes();const n=$('#rq');n.focus();try{n.setSelectionRange(pos,pos)}catch(_){}}});
 document.addEventListener('submit',e=>{e.preventDefault();
   if(e.target.id==='exf'){const v=$('#ext').value.trim();if(!v)return;shop={...shop,extras:[...(shop.extras||[]),{id:Date.now().toString(36),t:v,done:false}]};save('shop/'+wid(mon),shop);render();$('#ext').focus()}
   if(e.target.id==='rf'){
@@ -427,8 +449,9 @@ document.addEventListener('submit',e=>{e.preventDefault();
     save('recipes/'+id,data);
     if(pendingWish){const w=wishes.find(x=>x.id===pendingWish);if(w){const{id:wi,...d}=w;save('wishes/'+wi,{...d,r:id})}pendingWish=null}
     closeR()}
-  if(e.target.id==='wf'){const who=$('#wwho').value,r=$('#wr').value,t=$('#wt').value.trim();if(!r&&!t)return;
-    const id=Date.now().toString(36);const day=$('#wday').value||null;if(day&&r){const dd=dayOf(day);if((dd.voting||dd.cands?.length)&&!locked()&&!(dd.cands||[]).includes(r)&&fits(rById(r)||{},attOf(day)))setDay(day,{cands:[...(dd.cands||[]),r]})}save('wishes/'+id,{who,r:r||null,text:r?(rById(r)?.name||''):t,done:false,at:new Date().toISOString(),day,week:day?wid(mon):null});$('#wt').value='';$('#wr').value=''}});
+  if(e.target.id==='wf'){const t=$('#wt').value.trim();if(!t)return;addWish($('#wwho').value,'',t,$('#wday').value||null);$('#wt').value=''}});
+function addWish(who,r,t,day){
+    const id=Date.now().toString(36);if(day&&r){const dd=dayOf(day);if((dd.voting||dd.cands?.length)&&!locked()&&!(dd.cands||[]).includes(r)&&fits(rById(r)||{},attOf(day)))setDay(day,{cands:[...(dd.cands||[]),r]})}save('wishes/'+id,{who,r:r||null,text:r?(rById(r)?.name||''):t,done:false,at:new Date().toISOString(),day,week:day?wid(mon):null})}
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov')closeR()});
 addEventListener('keydown',e=>{if(e.key==='Escape')closeR()});
 

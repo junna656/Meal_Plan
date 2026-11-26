@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.0
+- Rezepte und Wünsche zusammengelegt: Rezepte als Kacheln mit „Wünschen“-Knopf, gewünschte zuerst, Suche nach Name, Zutat und Schlagwort.
+- Wünsche ohne Rezept als eigene Kacheln mit „Rezept per KI“; KI-Ideen als Kacheln.
+
 ## 1.7.1
 - Auswahl „Kinderportion“ aus der Wochenansicht entfernt; der Wert steht nur noch in der App-Konfiguration.
 
