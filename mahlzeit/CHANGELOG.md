@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.0
+- Rezept aus Link: Webseite wird in Home Assistant geladen (schema.org-Rezeptdaten bevorzugt), die KI übernimmt Zutaten und Zubereitung auf eine Portion umgerechnet; Link bleibt als Quelle am Rezept.
+- Lokale Netzwerkadressen sind beim Laden von Links gesperrt.
+
 ## 1.8.0
 - Rezepte und Wünsche zusammengelegt: Rezepte als Kacheln mit „Wünschen“-Knopf, gewünschte zuerst, Suche nach Name, Zutat und Schlagwort.
 - Wünsche ohne Rezept als eigene Kacheln mit „Rezept per KI“; KI-Ideen als Kacheln.

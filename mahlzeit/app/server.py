@@ -2,8 +2,11 @@
 
 Speichert alle Daten als JSON-Dokumente in /data/store.json und liefert die Weboberfläche über Ingress aus.
 """
+import html as htmllib
+import ipaddress
 import json
 import math
+import socket
 import os
 import random
 import time
@@ -324,6 +327,92 @@ def core(method, path, body=None):
         return json.loads(raw) if raw else None
 
 
+def _public_host(host):
+    try:
+        for info in socket.getaddrinfo(host, None):
+            ip = ipaddress.ip_address(info[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                return False
+        return True
+    except Exception:
+        return False
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        u = urlparse(newurl)
+        if u.scheme not in ("http", "https") or not _public_host(u.hostname or ""):
+            raise ValueError("Weiterleitung auf eine nicht erlaubte Adresse")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _ld_recipes(obj):
+    if isinstance(obj, list):
+        for o in obj:
+            yield from _ld_recipes(o)
+    elif isinstance(obj, dict):
+        t = obj.get("@type")
+        if t == "Recipe" or (isinstance(t, list) and "Recipe" in t):
+            yield obj
+        for k in ("@graph", "mainEntity", "itemListElement"):
+            if k in obj:
+                yield from _ld_recipes(obj[k])
+
+
+def _steps(ins):
+    out = []
+    if isinstance(ins, str):
+        out.append(ins)
+    elif isinstance(ins, list):
+        for s in ins:
+            out += _steps(s)
+    elif isinstance(ins, dict):
+        if ins.get("text"):
+            out.append(ins["text"])
+        if ins.get("itemListElement"):
+            out += _steps(ins["itemListElement"])
+    return out
+
+
+def _clean(s):
+    return re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", str(s)))).strip()
+
+
+def fetch_recipe(url):
+    """Holt eine Rezeptseite und gibt den Rezepttext zurück (schema.org-Daten bevorzugt)."""
+    u = urlparse(url)
+    if u.scheme not in ("http", "https") or not u.hostname or not _public_host(u.hostname):
+        raise ValueError("Bitte einen gültigen Link (https://…) eingeben")
+    opener = urllib.request.build_opener(_NoRedirect)
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Mahlzeit-Planer; Home Assistant)",
+        "Accept": "text/html,application/xhtml+xml", "Accept-Language": "de,en;q=0.8"})
+    with opener.open(req, timeout=20) as resp:
+        raw = resp.read(3_000_000)
+        charset = resp.headers.get_content_charset() or "utf-8"
+    page = raw.decode(charset, errors="replace")
+    title = _clean((re.search(r"<title[^>]*>(.*?)</title>", page, re.S | re.I) or [None, ""])[1])[:150]
+    for block in re.findall(r"<script[^>]*application/ld\+json[^>]*>(.*?)</script>", page, re.S | re.I):
+        try:
+            data = json.loads(block.strip())
+        except Exception:
+            continue
+        for rec in _ld_recipes(data):
+            ing = rec.get("recipeIngredient") or rec.get("ingredients") or []
+            parts = [f"Name: {_clean(rec.get('name', title))}",
+                     f"Portionen laut Seite: {_clean(rec.get('recipeYield', 'unbekannt'))}",
+                     "Zutaten:"] + [f"- {_clean(i)}" for i in (ing if isinstance(ing, list) else [ing])]
+            steps = [_clean(s) for s in _steps(rec.get("recipeInstructions"))]
+            if steps:
+                parts += ["Zubereitung:"] + [f"{n}. {s}" for n, s in enumerate(steps, 1)]
+            return {"title": _clean(rec.get("name", title)), "text": "\n".join(parts)[:15000], "structured": True}
+    body = re.sub(r"<(script|style|noscript|svg|header|footer|nav)[^>]*>.*?</\1>", " ", page, flags=re.S | re.I)
+    text = _clean(body)
+    if len(text) < 200:
+        raise ValueError("Auf der Seite wurde kein Rezept gefunden")
+    return {"title": title, "text": text[:15000], "structured": False}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "Mahlzeit/1.0"
 
@@ -420,6 +509,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json({"error": "Keine Einkaufsliste eingestellt"}, 400)
                 items = [str(i)[:200] for i in body.get("items", []) if str(i).strip()][:100]
                 return self.send_json({"added": add_todo(entity, items)})
+            if path == "/api/link":
+                return self.send_json(fetch_recipe(str(body.get("url", "")).strip()))
             if path == "/api/ki":
                 entity = o.get("ki_entity")
                 if not entity:

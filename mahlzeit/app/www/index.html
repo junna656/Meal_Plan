@@ -310,7 +310,7 @@ function renderRecipes(){
     ${op?`<div class="wp"><div class="row"><select id="wpw" aria-label="Wer wünscht">${who}</select><select id="wpd" aria-label="Für welchen Tag">${days}</select><button class="pri" data-wadd="${esc(x.id)}">Wünschen</button></div>
      ${ws.map(w=>`<div class="row wl"><span>${wishTag(w)}</span><select data-wplan="${esc(w.id)}" aria-label="Wunsch einplanen">${plan}</select><button data-wdel="${esc(w.id)}" aria-label="Wunsch löschen">✕</button></div>`).join('')}</div>`:''}
     </div>`};
-  $('#v-rezepte').innerHTML=`<div class="row" style="margin-bottom:12px"><input id="rq" type="search" placeholder="Rezept oder Zutat suchen" value="${esc(q)}" aria-label="Rezepte suchen" style="flex:1 1 180px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 12px"><button class="pri" id="newr">Neues Rezept</button></div>
+  $('#v-rezepte').innerHTML=`<div class="row" style="margin-bottom:12px"><input id="rq" type="search" placeholder="Rezept oder Zutat suchen" value="${esc(q)}" aria-label="Rezepte suchen" style="flex:1 1 180px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 12px"><button class="pri" id="newr">Neues Rezept</button>${ki?'<button id="newlink">Aus Link</button>':''}</div>
   ${free.length?`<div class="cat"><i class="ti ti-heart" aria-hidden="true"></i>Wünsche ohne Rezept</div><div class="tiles">${free.map(w=>`<div class="tile free"><div class="tn" style="padding:12px 12px 0">${esc(w.text)}</div><div class="tw"><i class="ti ti-heart" aria-hidden="true"></i> ${wishTag(w)}</div>
     <div class="row" style="padding:0 12px 12px">${ki?`<button class="pri" data-wclaude="${esc(w.id)}">Rezept per KI</button>`:''}<button data-wself="${esc(w.id)}">Anlegen</button><button data-wdel="${esc(w.id)}" aria-label="Wunsch löschen">✕</button></div></div>`).join('')}</div>`:''}
   <div class="cat"><i class="ti ti-chef-hat" aria-hidden="true"></i>${list.length} ${list.length===1?'Rezept':'Rezepte'}${s?' gefunden':''}</div>
@@ -328,6 +328,8 @@ function ingRow(x={}){return `<div class="ing"><input class="n" placeholder="Zut
 function openRecipe(r){
   r=r||{id:'',name:'',tags:[],steps:'',ing:[{}]};
   $('#rf').innerHTML=`<h2 style="margin-top:0">${r.id?'Rezept bearbeiten':'Neues Rezept'}</h2>
+  ${ki?`<label for="rl">Rezept aus Link übernehmen</label><div class="row"><input id="rl" type="url" inputmode="url" placeholder="https://www.chefkoch.de/rezepte/…" value="${esc(r.src||'')}" style="flex:1 1 200px"><button type="button" class="pri" id="linkfill">Holen</button></div>
+  <p class="meta" id="linkstat" style="margin:6px 0 0">${r.src&&/^https:\/\//.test(r.src)?`<a href="${esc(r.src)}" target="_blank" rel="noopener" style="color:var(--tom)">Original-Rezept öffnen</a>`:'Link einfügen – die KI übernimmt Zutaten und Zubereitung, umgerechnet auf eine Portion.'}</p>`:''}
   <label for="rn">Name</label><input id="rn" required value="${esc(r.name)}" style="width:100%">
   ${ki?'<div class="row" style="margin-top:8px"><button type="button" class="pri" id="kifill">Mit KI ausfüllen</button><span class="meta" id="kistat">Titel eingeben, dann ausfüllen lassen.</span></div>':''}
   <label for="rt">Schlagwörter (mit Komma)</label><input id="rt" value="${esc((r.tags||[]).join(', '))}" style="width:100%">
@@ -339,7 +341,7 @@ function openRecipe(r){
   <p class="meta">Änderungen landen im Formular – gespeichert wird erst mit „Speichern“.</p>`:''}
   <div class="bar"><button class="pri" type="submit">Speichern</button><button type="button" id="cancel">Abbrechen</button>${r.id?'<button type="button" id="rdel" style="margin-left:auto;color:var(--tom)">Löschen</button>':''}</div>
   <p class="warn" id="rdelq" hidden>Wirklich löschen? <button type="button" id="rdelyes">Ja, löschen</button></p>`;
-  chat=[];$('#rf').dataset.id=r.id;$('#ov').classList.add('on');$('#rn').focus()}
+  chat=[];$('#rf').dataset.id=r.id;$('#rf').dataset.src=r.src||'';$('#ov').classList.add('on');$('#rn').focus()}
 const closeR=()=>{$('#ov').classList.remove('on');pendingWish=null};
 const slug=n=>String(n).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)+'-'+Date.now().toString(36);
 
@@ -376,6 +378,14 @@ async function chatSend(b){const inp=$('#chatin'),t=inp.value.trim();if(!t)retur
     if(!$('#ov').classList.contains('on'))return;fillForm(x);chat.push({role:'ai',text:String(res?.reply||'Rezept angepasst.').slice(0,500)})}
   catch(e){chat.push({role:'ai',text:sErr(e)})}
   finally{b.disabled=false;renderChat()}}
+async function linkFill(b){const url=$('#rl').value.trim(),st=$('#linkstat');
+  if(!/^https?:\/\/\S+\.\S+/.test(url)){st.textContent='Bitte einen vollständigen Link eingeben (https://…).';$('#rl').focus();return}
+  b.disabled=true;st.textContent='Seite wird geladen …';
+  try{const pg=await api('POST','api/link',{url});if(!$('#ov').classList.contains('on'))return;st.textContent='Die KI übernimmt das Rezept …';
+    const x=clean(await kiJson(`${RULES()}\nHier ist ein Rezept von einer Webseite. Übernimm es möglichst originalgetreu auf Deutsch (Name, Zutaten, Zubereitung als kurze nummerierte Schritte). Rechne alle Mengen auf EINE Erwachsenenportion um (Portionenzahl der Seite beachten, sonst sinnvoll schätzen). Zutaten ohne Menge sinnvoll schätzen. Wenn das Gericht Fleisch oder Fisch enthält, ergänze eine passende "veg"-Ersatzzutat. Gib 1–3 kurze Schlagwörter.\n\nRezept von ${url}:\n${pg.text}\n\nAntworte nur mit einem JSON-Objekt dieser Form: ${FMT}`));
+    if(!x)throw new Error('Kein brauchbares Rezept erkannt');if(!$('#ov').classList.contains('on'))return;
+    fillForm(x);st.textContent='Fertig – bitte prüfen und speichern.'}
+  catch(e){st.textContent=sErr(e)}finally{b.disabled=false}}
 async function kiFill(b){const name=$('#rn').value.trim(),st=$('#kistat');if(!name){st.textContent='Bitte erst einen Titel eingeben.';$('#rn').focus();return}
   b.disabled=true;st.textContent='Die KI schreibt das Rezept …';
   try{const x=await aiRecipe(name);if(!$('#ov').classList.contains('on'))return;fillForm({...x,name});st.textContent='Fertig – bitte prüfen und speichern.'}
@@ -419,6 +429,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   else if(b.dataset.decide){const k=b.dataset.decide,id=decide(k);if(id)setDay(k,{r:id,cands:null,votes:null,voting:null})}
   else if(b.dataset.endvote)setDay(b.dataset.endvote,{cands:null,votes:null,voting:null});
   else if(b.id==='kifill')kiFill(b);
+  else if(b.id==='linkfill')linkFill(b);
+  else if(b.id==='newlink'){openRecipe();$('#rl')?.focus()}
   else if(b.id==='chatsend')chatSend(b);
   else if(b.id==='ideas')getIdeas();
   else if(b.id==='impb'){let n=0;try{let v=parseJSON($('#imp').value);for(const x of(Array.isArray(v)?v:[v]).map(clean).filter(Boolean)){save('recipes/'+slug(x.name),{name:x.name,tags:x.tags,steps:x.steps,ing:x.ing});n++}$('#impm').textContent=n?n+' Rezept(e) importiert':'Nichts Brauchbares gefunden';if(n)$('#imp').value=''}catch(e){$('#impm').textContent=e.message}}
@@ -443,7 +455,8 @@ document.addEventListener('submit',e=>{e.preventDefault();
   if(e.target.id==='exf'){const v=$('#ext').value.trim();if(!v)return;shop={...shop,extras:[...(shop.extras||[]),{id:Date.now().toString(36),t:v,done:false}]};save('shop/'+wid(mon),shop);render();$('#ext').focus()}
   if(e.target.id==='rf'){
     const ing=[...document.querySelectorAll('#ings .ing')].map(r=>({n:r.querySelector('.n').value.trim(),q:parseFloat(r.querySelector('.q').value)||0,u:r.querySelector('.u').value,t:r.querySelector('.t').value})).filter(x=>x.n);
-    const data={name:$('#rn').value.trim(),tags:$('#rt').value.split(',').map(s=>s.trim()).filter(Boolean),steps:$('#rs').value,ing};
+    const src=($('#rl')?.value||$('#rf').dataset.src||'').trim();
+    const data={name:$('#rn').value.trim(),tags:$('#rt').value.split(',').map(s=>s.trim()).filter(Boolean),steps:$('#rs').value,ing,...(/^https?:\/\//.test(src)?{src}:{})};
     if(!data.name)return;let id=$('#rf').dataset.id;
     if(!id)id=slug(data.name);
     save('recipes/'+id,data);
