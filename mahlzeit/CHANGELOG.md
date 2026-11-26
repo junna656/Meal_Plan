@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.3
+- KI-Rezepte: Zutaten ohne Fleisch werden immer für alle gerechnet; Einheit „Prise“.
+
 ## 1.4.2
 - Abstimmung lässt sich einklappen; nach der eigenen Stimme ist sie eingeklappt und zeigt nur, was vorne liegt und wer fehlt.
 

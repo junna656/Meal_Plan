@@ -114,7 +114,7 @@ nav a{padding-inline:2px;font-size:15px}
 {
 const ALLDAYS=[['mo','Montag'],['di','Dienstag'],['mi','Mittwoch'],['do','Donnerstag'],['fr','Freitag'],['sa','Samstag'],['so','Sonntag']];
 let PEOPLE=[],DAYS=ALLDAYS.slice(0,4).map((d,i)=>[...d,i]),CFG={};
-const UNITS=['g','ml','Stk','EL','TL','Pck','Bund'];
+const UNITS=['g','ml','Stk','EL','TL','Pck','Bund','Prise'];
 const TYPES={all:'für alle',meat:'Fleisch',veg:'veg. Ersatz'};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -280,8 +280,9 @@ function renderWishes(){
 const FMT='{"name":"…","why":"ein Satz, warum es passt","tags":["schnell"],"steps":"kurze Zubereitung, 3–5 Sätze","ing":[{"n":"Zutat","q":100,"u":"g","t":"all"}]}';
 const household=()=>`Familie, Abendessen für bis zu ${PEOPLE.filter(p=>!p.kid).length} Erwachsene und ${PEOPLE.filter(p=>p.kid).length} Kinder; ${PEOPLE.filter(p=>p.veg).length} davon essen nur vegetarisch. `;
 const RULES=()=>household()+`Alltagstauglich, höchstens 40 Minuten aktive Zeit, kinderfreundlich, Zutaten aus dem normalen Supermarkt.
-Zutatenmengen gelten pro Erwachsenenportion. Einheit u ist eine von: ${UNITS.join(', ')}. Feld t: "all" = für alle, "meat" = Fleisch/Fisch (nur für Fleischesser), "veg" = vegetarischer Ersatz für genau dieses Fleisch. Ein Gericht mit Fleisch braucht immer eine "veg"-Ersatzzutat. Antworte auf Deutsch.`;
+Zutatenmengen gelten pro Erwachsenenportion. Einheit u ist eine von: ${UNITS.join(', ')}. Feld t ist fast immer "all" (für alle, auch vegetarische Zutaten wie Mehl, Gemüse, Käse). "meat" nur für Fleisch/Fisch (nur für Fleischesser). "veg" NUR für die vegetarische Ersatzzutat zu einer "meat"-Zutat (z. B. Halloumi statt Hähnchen). Ein Gericht ohne Fleisch hat nur "all". Ein Gericht mit Fleisch braucht immer eine "veg"-Ersatzzutat. Antworte auf Deutsch.`;
 function clean(x){if(!x||typeof x!=='object')return null;const ing=(Array.isArray(x.ing)?x.ing:[]).map(z=>({n:String(z?.n||'').slice(0,60),q:Math.max(0,+z?.q||0),u:UNITS.includes(z?.u)?z.u:'g',t:TYPES[z?.t]?z.t:'all'})).filter(z=>z.n);
+  if(!ing.some(z=>z.t==='meat'))for(const z of ing)z.t='all';
   const name=String(x.name||'').slice(0,80);return name&&ing.length?{name,why:String(x.why||'').slice(0,200),tags:(Array.isArray(x.tags)?x.tags:[]).map(t=>String(t).slice(0,20)).slice(0,4),steps:String(x.steps||'').slice(0,1500),ing}:null}
 const sErr=e=>'Das hat nicht geklappt: '+(e?.message||'bitte nochmal versuchen.');
 function parseJSON(t){t=String(t||'');const f=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(f)t=f[1];try{return JSON.parse(t)}catch(_){}const a=Math.min(...['{','['].map(c=>{const i=t.indexOf(c);return i<0?1e9:i})),b=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));if(a<b)try{return JSON.parse(t.slice(a,b+1))}catch(_){}throw new Error('Antwort war kein gültiges JSON')}
