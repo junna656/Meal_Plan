@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.0
+- Rezept-Editor: Chat „Mit KI anpassen“ – Änderungswünsche eintippen, die KI passt Zutaten und Zubereitung im Formular an.
+
 ## 1.5.0
 - Rezept-Editor: „Mit KI ausfüllen“ – Titel eingeben, Schlagwörter, Zutaten und Zubereitung werden ergänzt.
 

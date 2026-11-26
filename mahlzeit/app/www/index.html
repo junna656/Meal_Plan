@@ -80,6 +80,10 @@ nav a{padding-inline:2px;font-size:15px}
 .vc{padding:8px 0;border-bottom:1px dashed var(--line)}.vc:last-of-type{border-bottom:0}
 .vc .top{display:flex;justify-content:space-between;gap:8px;font-weight:600}.vc .top span:last-child{white-space:nowrap}.vc.lead .top{color:var(--tom)}
 .vc .ppl{margin:6px 0 0}.vc .p{min-height:32px;font-size:13px}
+.chat{display:grid;gap:6px;margin:6px 0 8px}.chat:empty{display:none}
+.msg{padding:8px 12px;border-radius:14px;max-width:88%;font-size:15px;line-height:1.4;white-space:pre-wrap}
+.msg.u{justify-self:end;background:var(--ink);color:var(--bg)}.msg.a{justify-self:start;background:var(--chip)}.msg.w{color:var(--soft);font-style:italic}
+#chatin{flex:1 1 220px;min-height:64px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 10px}
 .ov{position:fixed;inset:0;background:rgba(20,10,20,.55);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;z-index:9}
 .ov.on{display:flex}
 .f{background:var(--bg);border-radius:16px;padding:20px;width:min(640px,100%)}
@@ -251,9 +255,12 @@ function openRecipe(r){
   <label>Zutaten pro Erwachsenenportion</label><div id="ings">${(r.ing||[]).map(ingRow).join('')}</div>
   <button type="button" id="addi">Zutat hinzufügen</button>
   <label for="rs">Zubereitung</label><textarea id="rs">${esc(r.steps)}</textarea>
+  ${ki?`<label for="chatin">Mit KI anpassen</label><div class="chat" id="chatlog"></div>
+  <div class="row"><textarea id="chatin" placeholder="z. B. Paneer selbst aus Milch machen statt fertig kaufen"></textarea><button type="button" class="pri" id="chatsend">Senden</button></div>
+  <p class="meta">Änderungen landen im Formular – gespeichert wird erst mit „Speichern“.</p>`:''}
   <div class="bar"><button class="pri" type="submit">Speichern</button><button type="button" id="cancel">Abbrechen</button>${r.id?'<button type="button" id="rdel" style="margin-left:auto;color:var(--tom)">Löschen</button>':''}</div>
   <p class="warn" id="rdelq" hidden>Wirklich löschen? <button type="button" id="rdelyes">Ja, löschen</button></p>`;
-  $('#rf').dataset.id=r.id;$('#ov').classList.add('on');$('#rn').focus()}
+  chat=[];$('#rf').dataset.id=r.id;$('#ov').classList.add('on');$('#rn').focus()}
 const closeR=()=>{$('#ov').classList.remove('on');pendingWish=null};
 const slug=n=>String(n).toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)+'-'+Date.now().toString(36);
 
@@ -294,9 +301,23 @@ async function getIdeas(){if(!ki||busy)return;busy=true;ideaMsg='';render();
     ideas=(Array.isArray(res)?res:[]).map(clean).filter(Boolean);if(!ideas.length)ideaMsg='Keine brauchbaren Ideen bekommen, bitte nochmal.'}
   catch(e){ideaMsg=sErr(e)}busy=false;render()}
 const aiRecipe=async name=>{const x=clean(await kiJson(`${RULES()}\nSchreibe ein Rezept für: "${name}". Antworte nur mit einem JSON-Objekt dieser Form: ${FMT}`));if(!x)throw new Error('Kein brauchbares Rezept bekommen');return x};
+let chat=[];
+function formRecipe(){return{name:$('#rn').value.trim(),tags:$('#rt').value.split(',').map(s=>s.trim()).filter(Boolean),steps:$('#rs').value,
+  ing:[...document.querySelectorAll('#ings .ing')].map(r=>({n:r.querySelector('.n').value.trim(),q:parseFloat(r.querySelector('.q').value)||0,u:r.querySelector('.u').value,t:r.querySelector('.t').value})).filter(x=>x.n)}}
+function fillForm(x){$('#rn').value=x.name;$('#rt').value=x.tags.join(', ');$('#ings').innerHTML=x.ing.map(ingRow).join('');$('#rs').value=x.steps}
+function renderChat(wait){const l=$('#chatlog');if(!l)return;l.innerHTML=chat.map(m=>`<div class="msg ${m.role==='user'?'u':'a'}">${esc(m.text)}</div>`).join('')+(wait?'<div class="msg a w">Die KI passt das Rezept an …</div>':'')}
+async function chatSend(b){const inp=$('#chatin'),t=inp.value.trim();if(!t)return;const cur=formRecipe();
+  if(!cur.name&&!cur.ing.length){chat.push({role:'ai',text:'Bitte zuerst einen Titel eingeben oder das Rezept ausfüllen lassen.'});renderChat();return}
+  chat.push({role:'user',text:t});inp.value='';b.disabled=true;renderChat(true);
+  const hist=chat.slice(0,-1).slice(-8).map(m=>(m.role==='user'?'Nutzer: ':'Du: ')+m.text).join('\n');
+  try{const res=await kiJson(`${RULES()}\nAktuelles Rezept als JSON:\n${JSON.stringify(cur)}\n${hist?'Bisheriger Verlauf:\n'+hist+'\n':''}Neue Bitte des Nutzers: ${t}\nPasse das Rezept entsprechend an (Zutaten, Mengen, Zubereitung; Namen nur ändern, wenn es nötig ist oder gewünscht wird). Antworte nur mit einem JSON-Objekt dieser Form: {"reply":"1–2 Sätze auf Deutsch, was du geändert hast","recipe":${FMT}}`);
+    const x=clean(res?.recipe||res);if(!x)throw new Error('Kein brauchbares Rezept bekommen');
+    if(!$('#ov').classList.contains('on'))return;fillForm(x);chat.push({role:'ai',text:String(res?.reply||'Rezept angepasst.').slice(0,500)})}
+  catch(e){chat.push({role:'ai',text:sErr(e)})}
+  finally{b.disabled=false;renderChat()}}
 async function kiFill(b){const name=$('#rn').value.trim(),st=$('#kistat');if(!name){st.textContent='Bitte erst einen Titel eingeben.';$('#rn').focus();return}
   b.disabled=true;st.textContent='Die KI schreibt das Rezept …';
-  try{const x=await aiRecipe(name);if(!$('#ov').classList.contains('on'))return;$('#rt').value=x.tags.join(', ');$('#ings').innerHTML=x.ing.map(ingRow).join('');$('#rs').value=x.steps;st.textContent='Fertig – bitte prüfen und speichern.'}
+  try{const x=await aiRecipe(name);if(!$('#ov').classList.contains('on'))return;fillForm({...x,name});st.textContent='Fertig – bitte prüfen und speichern.'}
   catch(e){st.textContent=sErr(e)}finally{b.disabled=false}}
 async function recipeFromWish(id,b){const w=wishes.find(x=>x.id===id);if(!w||!ki)return;b.disabled=true;b.textContent='KI schreibt …';
   try{const x=clean(await kiJson(`${RULES()}\nSchreibe ein Rezept für: "${w.text}". Antworte nur mit einem JSON-Objekt dieser Form: ${FMT}`));
@@ -331,6 +352,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
   else if(b.dataset.decide){const k=b.dataset.decide,id=decide(k);if(id)setDay(k,{r:id,cands:null,votes:null,voting:null})}
   else if(b.dataset.endvote)setDay(b.dataset.endvote,{cands:null,votes:null,voting:null});
   else if(b.id==='kifill')kiFill(b);
+  else if(b.id==='chatsend')chatSend(b);
   else if(b.id==='ideas')getIdeas();
   else if(b.id==='impb'){let n=0;try{let v=parseJSON($('#imp').value);for(const x of(Array.isArray(v)?v:[v]).map(clean).filter(Boolean)){save('recipes/'+slug(x.name),{name:x.name,tags:x.tags,steps:x.steps,ing:x.ing});n++}$('#impm').textContent=n?n+' Rezept(e) importiert':'Nichts Brauchbares gefunden';if(n)$('#imp').value=''}catch(e){$('#impm').textContent=e.message}}
   else if(b.id==='todo'){const ch=shop.checked||{};const items=shopItems().filter(x=>!ch[x.key]).map(x=>`${x.n} (${fmtQ(x.q,x.u)})`).concat((shop.extras||[]).filter(x=>!x.done).map(x=>x.t));b.disabled=true;api('POST','api/todo',{items}).then(d=>{b.textContent=d.added+' Einträge übernommen'},e=>{b.disabled=false;msg(e.message)})}
