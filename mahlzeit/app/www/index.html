@@ -95,7 +95,7 @@ main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
 .strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}.strip:empty{display:none}
 .strip button{background:transparent;color:var(--headink);min-height:40px;padding:2px 0;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:4px;border-radius:10px}
 .strip button i{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.55);display:block}
-.strip button.s-ok i{background:#6fcf94;border-color:#6fcf94}.strip button.s-vote i{background:var(--mus);border-color:var(--mus)}.strip button.s-warn i{background:#ff6a4d;border-color:#ff6a4d}
+.strip button.s-ok i{background:#6fcf94;border-color:#6fcf94}.strip button.s-vote i{background:var(--mus);border-color:var(--mus)}.strip button.s-warn i{background:#ff6a4d;border-color:#ff6a4d}.strip button.s-off i{background:var(--line);border-color:var(--line)}
 .bn{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:var(--bg);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .bn a{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px;justify-content:center;color:var(--soft);text-decoration:none;font-size:12px;font-weight:600;border-radius:12px}
 .bn a i{font-size:23px;line-height:1}.bn a.on{color:var(--tom)}
@@ -179,7 +179,7 @@ function fixedFor(k){
     if(w.includes('alle'))return f.gericht}
   return null}
 const fixedRecipe=n=>n?recipes.find(r=>String(r.name).toLowerCase()===String(n).toLowerCase()):null;
-const effR=k=>rById(dayOf(k).r)||fixedRecipe(fixedFor(k));
+const effR=k=>dayOf(k).off?null:rById(dayOf(k).r)||fixedRecipe(fixedFor(k));
 const lastOff=()=>DAYS.length?DAYS[DAYS.length-1][2]:3;
 const dayOf=k=>plan.days?.[k]||{};
 const attOf=k=>({...defAtt(k),...(dayOf(k).att||{})});
@@ -203,17 +203,17 @@ function voteCands(k,taken=[]){const att=attOf(k),wk=wid(mon),out=[];const ok=id
 function decide(k){const d=dayOf(k),c=d.cands||[],v=d.votes||{},n={};for(const id of c)n[id]=0;for(const id of Object.values(v))if(id in n)n[id]++;
   const max=Math.max(0,...Object.values(n));let tied=c.filter(id=>n[id]===max);const wished=new Set(wishes.filter(w=>!w.done).map(w=>w.r));
   const tw=tied.filter(id=>wished.has(id));if(tw.length)tied=tw;return tied[Math.floor(Math.random()*tied.length)]}
-function setDay(k,patch){plan={days:{...plan.days,[k]:{...dayOf(k),...patch}}};save('plans/'+wid(mon),plan);if(patch.r)markWishes([patch.r]);render()}
+function setDay(k,patch){if(patch.r||patch.voting)patch={off:null,...patch};plan={days:{...plan.days,[k]:{...dayOf(k),...patch}}};save('plans/'+wid(mon),plan);if(patch.r)markWishes([patch.r]);render()}
 
 // ---- Woche ----
-function recipeOptions(sel,att,fx){
+function recipeOptions(sel,att,fx,off){
   const ok=recipes.filter(r=>fits(r,att)),no=recipes.filter(r=>!fits(r,att));
-  const o=r=>`<option value="${esc(r.id)}"${r.id===sel?' selected':''}>${esc(r.name)}</option>`;
-  return `<option value="">${fx?'Fester Abend: '+esc(fx):'– Gericht wählen –'}</option>${ok.map(o).join('')}${no.length?`<optgroup label="Nicht vegetarisch">${no.map(o).join('')}</optgroup>`:''}`}
+  const o=r=>`<option value="${esc(r.id)}"${!off&&r.id===sel?' selected':''}>${esc(r.name)}</option>`;
+  return `<option value="">${fx?'Fester Abend: '+esc(fx):'– Gericht wählen –'}</option><option value="__off__"${off?' selected':''}>Kein Abendessen geplant</option>${ok.map(o).join('')}${no.length?`<optgroup label="Nicht vegetarisch">${no.map(o).join('')}</optgroup>`:''}`}
 const dOpen=new Set();
-function dayInfo(k){const d=dayOf(k),att=attOf(k),fx=rById(d.r)?null:fixedFor(k),r=effR(k),vegIn=PEOPLE.filter(x=>x.veg&&att[x.id]);
+function dayInfo(k){const d=dayOf(k),att=attOf(k),fx=d.off||rById(d.r)?null:fixedFor(k),r=effR(k),vegIn=PEOPLE.filter(x=>x.veg&&att[x.id]);
   const voting=!!(d.voting||d.cands?.length),bad=r&&!fits(r,att);
-  return{d,att,fx,r,vegIn,voting,bad,st:bad?'s-warn':(r||fx)?'s-ok':voting?'s-vote':''}}
+  return{d,att,fx,r,vegIn,voting,bad,st:d.off?'s-off':bad?'s-warn':(r||fx)?'s-ok':voting?'s-vote':''}}
 function voteSummary(d,att){const v=d.votes||{},n={};for(const id of Object.values(v))n[id]=(n[id]||0)+1;const max=Math.max(0,...Object.values(n));
   const lead=(d.cands||[]).filter(id=>max&&n[id]===max).map(id=>rById(id)?.name).filter(Boolean),left=PEOPLE.filter(p=>att[p.id]&&!v[p.id]).map(p=>p.n);
   const c=(d.cands||[]).length;return (lead.length?`${lead.join(' / ')} vorne (${max})`:c?`${c} ${c===1?'Gericht':'Gerichte'}, noch keine Stimme`:'noch keine Gerichte')+(left.length&&!locked()?` · fehlt: ${left.join(', ')}`:'')}
@@ -221,7 +221,8 @@ function renderWeek(){
   const h=DAYS.map(([k,name,o])=>{
     const{d,att,fx,r,vegIn,voting,bad}=dayInfo(k),p=portions(att),open=dOpen.has(k),n=PEOPLE.filter(x=>att[x.id]).length;
     let title,sub,empty=false;
-    if(fx||r){title=esc(fx||r.name)+(fx?' <span class="tag">fest</span>':'')+(d.auto&&r&&!fx?' <span class="tag">Abstimmung</span>':'');
+    if(d.off){title='Kein Abendessen geplant';sub='kein Einkauf'}
+    else if(fx||r){title=esc(fx||r.name)+(fx?' <span class="tag">fest</span>':'')+(d.auto&&r&&!fx?' <span class="tag">Abstimmung</span>':'');
       sub=bad?`<span class="w">Nicht vegetarisch – ${esc(vegIn.map(x=>x.n).join(' und '))} essen mit</span>`:fx&&!r?`${n} Personen · kein Einkauf`:`${nf(p.tot)} Portionen${r&&hasMeat(r)&&vegIn.length?' · mit Veggie-Variante':''}`}
     else if(voting){title='Abstimmung läuft';sub=esc(voteSummary(d,att))}
     else{title='Noch offen';sub=n?'Tippen zum Planen':'Niemand isst mit';empty=true}
@@ -231,7 +232,7 @@ function renderWeek(){
     return `<article class="day${open?' open':''}" id="day-${k}"><div class="dr">
       <button class="dh" data-dopen="${k}" aria-expanded="${open}"><span class="dn">${name.slice(0,2)}<small>${dfmt(add(mon,o))}</small></span><span class="ds${empty?' empty':''}">${title}<small>${sub}</small></span></button>
       <span class="av">${PEOPLE.map(x=>`<button class="${att[x.id]?'on':''}${x.veg?' v':''}" data-att="${k}" data-p="${esc(x.id)}" aria-pressed="${!!att[x.id]}" aria-label="${esc(x.n)} isst ${att[x.id]?'mit':'nicht mit'}">${esc(x.ini||'')}</button>`).join('')}</span></div>
-      ${open?`<div class="dx"><div class="row"><select data-k="${k}" aria-label="Gericht am ${name}">${recipeOptions(d.r,att,fx)}</select>
+      ${open?`<div class="dx"><div class="row"><select data-k="${k}" aria-label="Gericht am ${name}">${recipeOptions(d.r,att,fx,d.off)}</select>
       <button data-sug="${k}">Vorschlag</button>${voting||locked()?'':`<button data-startvote="${k}">Abstimmen</button>`}</div>
       ${voting?voteBlock(k,d,att):''}
       <div class="meta" style="margin-top:8px">${n} Personen · ${nf(p.tot)} Portionen</div>${status}</div>`:''}</article>`}).join('');
@@ -400,7 +401,7 @@ function tab(){const t=location.hash.slice(1);return t==='wuensche'?'rezepte':['
 function render(){
   const{w}=isoWeek(mon);$('#wklabel').innerHTML=`KW ${w} <small>${dfmt(mon)} – ${dfmt(add(mon,lastOff()))} · ${w%2?'ungerade':'gerade'} Woche</small>`;
   const t=tab();document.querySelectorAll('.bn a').forEach(a=>{a.classList.toggle('on',a.dataset.t===t);a.setAttribute('aria-current',a.dataset.t===t?'page':'false')});
-  $('#strip').innerHTML=DAYS.map(([k,n])=>{const s=dayInfo(k).st;return `<button class="${s}" data-strip="${k}" aria-label="${n}: ${s==='s-ok'?'geplant':s==='s-vote'?'Abstimmung läuft':s==='s-warn'?'passt nicht':'offen'}">${n.slice(0,2)}<i></i></button>`}).join('');
+  $('#strip').innerHTML=DAYS.map(([k,n])=>{const s=dayInfo(k).st;return `<button class="${s}" data-strip="${k}" aria-label="${n}: ${s==='s-ok'?'geplant':s==='s-vote'?'Abstimmung läuft':s==='s-warn'?'passt nicht':s==='s-off'?'kein Abendessen':'offen'}">${n.slice(0,2)}<i></i></button>`}).join('');
   const sh=shopItems(),ch=shop.checked||{},nv=DAYS.filter(([k])=>dayInfo(k).voting).length,ns=sh.filter(x=>!ch[x.key]).length+(shop.extras||[]).filter(x=>!x.done).length,nw=wishes.filter(w=>!w.done).length;
   $('#b-woche').textContent=nv||'';$('#b-einkauf').textContent=ns||'';$('#b-rezepte').textContent=nw||'';
   for(const v of['woche','einkauf','rezepte'])$('#v-'+v).hidden=v!==t;
@@ -409,7 +410,7 @@ addEventListener('hashchange',render);
 
 // ---- Ereignisse ----
 document.addEventListener('change',e=>{const t=e.target;
-  if(t.dataset.k)setDay(t.dataset.k,{r:t.value||null,auto:null});
+  if(t.dataset.k){const off=t.value==='__off__';setDay(t.dataset.k,{r:off?null:t.value||null,off:off||null,auto:null,...(off?{cands:null,votes:null,voting:null}:{})})}
   else if(t.dataset.addc){if(t.value){const k=t.dataset.addc;setDay(k,{cands:[...(dayOf(k).cands||[]),t.value]})}}
   else if(t.dataset.wplan){const w=wishes.find(x=>x.id===t.dataset.wplan);if(w&&t.value)setDay(t.value,{r:w.r})}
   else if(t.id==='kf'){settings={...settings,kidFactor:parseFloat(t.value.replace(',','.'))};save('settings/main',settings);render()}
@@ -418,7 +419,7 @@ document.addEventListener('change',e=>{const t=e.target;
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.att){const k=b.dataset.att,a=attOf(k);a[b.dataset.p]=!a[b.dataset.p];setDay(k,{att:a})}
   else if(b.dataset.sug){const k=b.dataset.sug,id=suggest(k);if(id)setDay(k,{r:id})}
-  else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
+  else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!days[k]?.off&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
   else if(b.dataset.wopen){wOpen=wOpen===b.dataset.wopen?'':b.dataset.wopen;render()}
   else if(b.dataset.wadd){addWish($('#wpw').value,b.dataset.wadd,'',$('#wpd').value||null);render()}
   else if(b.dataset.dopen){const k=b.dataset.dopen;dOpen.has(k)?dOpen.delete(k):dOpen.add(k);render()}

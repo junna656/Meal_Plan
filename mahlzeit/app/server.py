@@ -182,6 +182,9 @@ def week_summary(week_id):
     lines, items = [], {}
     for k in [d for d in ORDER if d in tage]:
         day = plan.get(k) or {}
+        if day.get("off"):
+            lines.append(f"{DAYNAMES[k]}: kein Abendessen")
+            continue
         att = {**def_att(ppl, k, monday), **(day.get("att") or {})}
         r = recipes.get(day.get("r"))
         fx = None if r else fixed_for(o, ppl, k, monday, att)

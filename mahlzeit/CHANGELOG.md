@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.9.1
+- Neue Auswahl „Kein Abendessen geplant“ pro Tag: Abend gilt als erledigt, wird von „Leere Abende füllen“ übersprungen, fester Abend entfällt, keine Zutaten auf der Einkaufsliste.
+
 ## 1.9.0
 - Rezept aus Link: Webseite wird in Home Assistant geladen (schema.org-Rezeptdaten bevorzugt), die KI übernimmt Zutaten und Zubereitung auf eine Portion umgerechnet; Link bleibt als Quelle am Rezept.
 - Lokale Netzwerkadressen sind beim Laden von Links gesperrt.
