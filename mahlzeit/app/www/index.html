@@ -171,18 +171,18 @@ function initials(){const f=p=>p.n.trim().charAt(0).toUpperCase();for(const p of
 function present(rules,k,even){return rules.some(([wk,days])=>(wk==='immer'||(wk==='gerade')===even)&&(!days||days.includes(k)))}
 function parseRules(s){s=String(s||'').toLowerCase().trim();if(!s||s==='nie')return[];return s.split(';').map(x=>x.trim()).filter(Boolean).map(x=>{let wk='immer',days=null;for(const t of x.split(/\s+/)){if(['immer','gerade','ungerade'].includes(t))wk=t;else days=t.split(',').map(d=>d.trim().slice(0,2)).filter(Boolean)}return[wk,days]})}
 function defAtt(k,m=mon){const even=isoWeek(m).w%2===0,o={};for(const p of PEOPLE)o[p.id]=present(p.rules,k,even);return o}
-function fixedFor(k){
-  const off=ALLDAYS.findIndex(d=>d[0]===k),att=attOf(k),all=PEOPLE.length&&PEOPLE.every(p=>att[p.id]);
+function fixedFor(k,m=mon,P=plan){
+  const off=ALLDAYS.findIndex(d=>d[0]===k),att=attOf(k,m,P),all=PEOPLE.length&&PEOPLE.every(p=>att[p.id]);
   for(const f of CFG.feste||[]){const tage=[].concat(f.tag||[]);if(!tage.includes(k)||!f.gericht)continue;const w=[].concat(f.wenn||['immer']);
     if(w.includes('immer'))return f.gericht;if(!all)continue;
-    if(w.includes('alle_erster_im_monat')){const d=add(mon,off);let first=true;for(let x=add(d,-7);x.getMonth()===d.getMonth();x=add(x,-7)){const a=defAtt(k,mondayOf(x));if(PEOPLE.every(p=>a[p.id])){first=false;break}}if(first)return f.gericht;continue}
+    if(w.includes('alle_erster_im_monat')){const d=add(m,off);let first=true;for(let x=add(d,-7);x.getMonth()===d.getMonth();x=add(x,-7)){const a=defAtt(k,mondayOf(x));if(PEOPLE.every(p=>a[p.id])){first=false;break}}if(first)return f.gericht;continue}
     if(w.includes('alle'))return f.gericht}
   return null}
 const fixedRecipe=n=>n?recipes.find(r=>String(r.name).toLowerCase()===String(n).toLowerCase()):null;
-const effR=k=>dayOf(k).off||dayOf(k).txt?null:rById(dayOf(k).r)||fixedRecipe(fixedFor(k));
+const effR=(k,m=mon,P=plan)=>dayOf(k,P).off||dayOf(k,P).txt?null:rById(dayOf(k,P).r)||fixedRecipe(fixedFor(k,m,P));
 const lastOff=()=>DAYS.length?DAYS[DAYS.length-1][2]:3;
-const dayOf=k=>plan.days?.[k]||{};
-const attOf=k=>({...defAtt(k),...(dayOf(k).att||{})});
+const dayOf=(k,P=plan)=>P.days?.[k]||{};
+const attOf=(k,m=mon,P=plan)=>({...defAtt(k,m),...(dayOf(k,P).att||{})});
 function portions(att){let tot=0,veg=0;for(const p of PEOPLE)if(att[p.id]){const f=p.kid?+settings.kidFactor||0.6:1;tot+=f;if(p.veg)veg+=f}return{tot,veg,meat:tot-veg}}
 const rById=id=>recipes.find(r=>r.id===id);
 const hasMeat=r=>(r.ing||[]).some(x=>x.t==='meat');
@@ -265,9 +265,12 @@ function suggest(k,taken){
 
 // ---- Einkauf ----
 function fmtQ(q,u){if(u==='g'||u==='ml'){const v=q<50?Math.ceil(q/5)*5:Math.ceil(q/10)*10;return v>=1000?nf(v/1000)+(u==='g'?' kg':' l'):v+' '+u}return nf(u==='Stk'?Math.ceil(q-0.05):Math.ceil(q*2)/2)+' '+u}
+// Samstagseinkauf vor der Planwoche: Sa+So der Woche davor, Mo–Mi der Planwoche. Do und Fr kauft ihr frisch.
+const SHOP_WIN=[[-1,'sa'],[-1,'so'],[0,'mo'],[0,'di'],[0,'mi']];
+const shopDays=()=>SHOP_WIN.filter(([,k])=>DAYS.some(d=>d[0]===k)).map(([w,k])=>{const m=w?add(mon,-7):mon,P=w?prevPlan:plan,d=ALLDAYS.find(x=>x[0]===k);return{k,name:d[1],m,P,date:add(m,ALLDAYS.indexOf(d))}});
 function shopItems(){
   const m=new Map();
-  DAYS.forEach(([k,name])=>{const r=effR(k);if(!r)return;const p=portions(attOf(k));
+  shopDays().forEach(({k,name,m:wm,P})=>{const r=effR(k,wm,P);if(!r)return;const p=portions(attOf(k,wm,P));
     for(const x of r.ing||[]){const n=x.t==='meat'?(hasAlt(r)?p.meat:p.tot):x.t==='veg'?p.veg:p.tot;const q=(+x.q||0)*n;if(q<=0)continue;
       const key=(x.n+'|'+x.u).toLowerCase().replace(/[^a-z0-9äöüß|]+/g,'-');const e=m.get(key)||{key,n:x.n,u:x.u,q:0,days:new Set()};e.q+=q;e.days.add(name.slice(0,2));m.set(key,e)}});
   return[...m.values()].sort((a,b)=>a.n.localeCompare(b.n,'de'))}
@@ -286,7 +289,8 @@ const CORDER=['obst','brot','kuehl','fleisch','trocken','kons','tk','sonst'];
 function renderShop(){
   const it=shopItems(),ch=shop.checked||{},ex=shop.extras||[];
   const open=it.filter(x=>!ch[x.key]).length+ex.filter(x=>!x.done).length;
-  $('#v-einkauf').innerHTML=`<p class="note">Für ${dfmt(mon)} bis ${dfmt(add(mon,lastOff()))}, Mengen nach den Personen am Tisch. Einkauf am Samstag davor.</p>
+  const sd=shopDays(),win=sd.length?`${sd[0].name.slice(0,2)}, ${dfmt(sd[0].date)} bis ${sd[sd.length-1].name.slice(0,2)}, ${dfmt(sd[sd.length-1].date)}`:'–';
+  $('#v-einkauf').innerHTML=`<p class="note">Samstagseinkauf am ${dfmt(add(mon,-2))} für ${win}, Mengen nach den Personen am Tisch. Donnerstag und Freitag kauft ihr frisch.</p>
   <h2>${open?open+' Dinge offen':'Alles erledigt'}</h2>
   ${it.length?(()=>{const g={};for(const x of it){const c=catOf(x.n);(g[c[0]]=g[c[0]]||{c,xs:[]}).xs.push(x)}return CORDER.filter(k=>g[k]).map(k=>{const{c,xs}=g[k];return `<div class="cat"><i class="ti ${c[2]}" aria-hidden="true"></i>${c[1]}</div><ul class="list">${xs.map(x=>`<li class="${ch[x.key]?'done':''}"><input type="checkbox" id="c-${esc(x.key)}" data-ck="${esc(x.key)}"${ch[x.key]?' checked':''}><label for="c-${esc(x.key)}">${esc(x.n)} <span class="from">${esc([...x.days].join(', '))}</span><span class="q">${esc(fmtQ(x.q,x.u))}</span></label></li>`).join('')}</ul>`}).join('')})():'<p class="note">Plane erst ein paar Abende, dann erscheint hier die Liste.</p>'}
   <h2>Extra</h2><form class="add" id="exf"><input id="ext" placeholder="z. B. Milch, Brot" aria-label="Extra-Artikel"><button class="pri">Dazu</button></form>

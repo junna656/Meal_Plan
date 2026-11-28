@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.0
+- Einkaufsliste für den Samstagseinkauf deckt Samstag und Sonntag der laufenden Woche plus Montag bis Mittwoch der neuen Planwoche ab; Donnerstag und Freitag kommen auf keine Liste (frisch unter der Woche). Gilt im Einkauf-Tab, beim Knopf „In HA-Einkaufsliste“ und beim Samstags-Versand.
+- Samstags-Push listet den Plan von Samstag bis Mittwoch.
+
 ## 1.10.0
 - Neue Auswahl „Eigenes eintippen …“ pro Tag: freier Text (z. B. Reste, Pizza bestellen) gilt nur für diesen einen Tag, wird nicht als Rezept gespeichert, fester Abend entfällt, keine Zutaten auf der Einkaufsliste; erscheint so auch im Samstags-Push.
 

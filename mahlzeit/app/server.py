@@ -166,8 +166,17 @@ def fmt_q(q, u):
     return f"{num(math.ceil(q - 0.05) if u == 'Stk' else math.ceil(q * 2) / 2)} {u}"
 
 
+SHOP_WINDOW = [(-1, "sa"), (-1, "so"), (0, "mo"), (0, "di"), (0, "mi")]  # Samstagseinkauf: Sa+So davor, Mo–Mi der Planwoche
+
+
+def week_of(monday):
+    iy, iw, _ = monday.isocalendar()
+    return f"{iy}-W{iw:02d}"
+
+
 def week_summary(week_id):
-    """Plan-Übersicht und offene Einkaufsposten einer Woche (wie in der Weboberfläche gerechnet)."""
+    """Plan-Übersicht Sa–Mi und offene Einkaufsposten für den Samstagseinkauf vor der Planwoche
+    (wie in der Weboberfläche gerechnet). Do und Fr kommen bewusst auf keine Liste."""
     o = load_options()
     ppl = people(o)
     y, w = week_id.split("-W")
@@ -175,22 +184,24 @@ def week_summary(week_id):
     docs = state["docs"]
     recipes = {p[8:]: d for p, d in docs.items() if p.startswith("recipes/")}
     by_name = {str(d.get("name", "")).lower(): d for d in recipes.values()}
-    plan = (docs.get(f"plans/{week_id}") or {}).get("days") or {}
     shop = docs.get(f"shop/{week_id}") or {}
     kid = float(o.get("kinderportion") or 0.6)
     tage = [t.strip()[:2] for t in str(o.get("tage", "mo,di,mi,do")).lower().split(",")]
     lines, items = [], {}
-    for k in [d for d in ORDER if d in tage]:
-        day = plan.get(k) or {}
+    for wk, k in SHOP_WINDOW:
+        if k not in tage:
+            continue
+        m = monday + timedelta(days=7 * wk)
+        day = ((docs.get(f"plans/{week_of(m)}") or {}).get("days") or {}).get(k) or {}
         if day.get("off"):
             lines.append(f"{DAYNAMES[k]}: kein Abendessen")
             continue
         if day.get("txt"):
             lines.append(f"{DAYNAMES[k]}: {day['txt']}")
             continue
-        att = {**def_att(ppl, k, monday), **(day.get("att") or {})}
+        att = {**def_att(ppl, k, m), **(day.get("att") or {})}
         r = recipes.get(day.get("r"))
-        fx = None if r else fixed_for(o, ppl, k, monday, att)
+        fx = None if r else fixed_for(o, ppl, k, m, att)
         if not r and fx:
             r = by_name.get(fx.lower())
         lines.append(f"{DAYNAMES[k]}: {fx or (r or {}).get('name') or '–'}")
@@ -246,7 +257,7 @@ def saturday_send():
         return
     now = datetime.now(TZ)
     nxt = (now + timedelta(days=7 - now.weekday())).date()  # nächster Montag
-    week_id = f"{nxt.isocalendar()[0]}-W{nxt.isocalendar()[1]:02d}"
+    week_id = week_of(nxt)
     dl = deadline(week_id)
     if not (dl <= now < dl + timedelta(hours=12)):
         return
@@ -265,7 +276,7 @@ def saturday_send():
         except Exception as e:
             print("Einkaufsliste fehlgeschlagen:", e, flush=True)
     panel = "/" + os.environ.get("HOSTNAME", "").replace("-", "_") if os.environ.get("HOSTNAME") else "/"
-    msg = "\n".join(lines) + (f"\n{added} Dinge auf der Einkaufsliste." if added else "")
+    msg = "Plan Sa bis Mi:\n" + "\n".join(lines) + (f"\n{added} Dinge auf der Einkaufsliste." if added else "")
     for svc in o.get("benachrichtigen", []):
         svc = str(svc).removeprefix("notify.")
         try:

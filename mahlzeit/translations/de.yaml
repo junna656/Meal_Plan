@@ -22,7 +22,7 @@ configuration:
     description: To-do-Liste, in die die Einkaufsliste übernommen werden kann (leer = aus).
   samstag_versand:
     name: Samstags-Versand
-    description: Samstag 9:00 nach der Abstimmung die Einkaufsliste in die To-do-Liste übernehmen und den Plan per Push schicken.
+    description: Samstag 9:00 nach der Abstimmung die Einkaufsliste (Sa und So plus Mo bis Mi der neuen Woche) in die To-do-Liste übernehmen und den Plan Sa bis Mi per Push schicken.
   benachrichtigen:
     name: Push an
     description: Notify-Dienste für den Samstags-Push, z. B. notify.mobile_app_gunnars_iphone.

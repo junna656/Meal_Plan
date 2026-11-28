@@ -4,7 +4,7 @@ Eine Home-Assistant-App für die Familie: Abendessen der Woche planen, Rezepte s
 
 - **Woche:** pro Abend ein Gericht. Wer mitisst, kommt aus festen Mustern (z. B. Kinder nur in geraden Kalenderwochen) und lässt sich pro Abend antippen.
 - **Vegetarisch:** Wer vegetarisch isst, bekommt automatisch die Veggie-Variante; Fleischgerichte ohne Variante werden markiert.
-- **Einkauf:** Zutaten werden über alle Abende zusammengezählt, Mengen nach den Personen am Tisch. Abhaken, Extras ergänzen, mit einem Tipp in eine To-do-Liste von Home Assistant übernehmen.
+- **Einkauf:** Zutaten werden über alle Abende zusammengezählt, Mengen nach den Personen am Tisch. Die Liste für den Samstagseinkauf deckt Sa und So der laufenden Woche plus Mo bis Mi der neuen Planwoche ab (Do und Fr kauft ihr frisch). Abhaken, Extras ergänzen, mit einem Tipp in eine To-do-Liste von Home Assistant übernehmen.
 - **Wünsche:** Jeder kann sich Gerichte wünschen; Wünsche kommen bei Vorschlägen zuerst dran.
 - **KI (optional):** Mit einer `ai_task`-Entität gibt es Rezept-Ideen und Rezepte zu Wünschen.
 
