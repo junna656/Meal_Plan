@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.10.0
+- Neue Auswahl „Eigenes eintippen …“ pro Tag: freier Text (z. B. Reste, Pizza bestellen) gilt nur für diesen einen Tag, wird nicht als Rezept gespeichert, fester Abend entfällt, keine Zutaten auf der Einkaufsliste; erscheint so auch im Samstags-Push.
+
 ## 1.9.1
 - Neue Auswahl „Kein Abendessen geplant“ pro Tag: Abend gilt als erledigt, wird von „Leere Abende füllen“ übersprungen, fester Abend entfällt, keine Zutaten auf der Einkaufsliste.
 

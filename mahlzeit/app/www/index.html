@@ -41,7 +41,7 @@ main{padding:20px max(5vw,16px) 48px}
 .dish{font-size:22px;line-height:1.2;margin:0 0 8px}
 .dish.empty{color:var(--soft);font-style:italic;font-family:Figtree,sans-serif;font-size:17px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.row select{flex:1 1 200px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 10px}
+.row select,.row input[data-txt]{flex:1 1 200px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:0 10px}
 .ppl{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 4px}
 .p{min-height:36px;padding:0 12px;border-radius:99px;font-size:14px;font-weight:600;border:1px solid var(--line);background:transparent;color:var(--soft)}
 .p.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -179,7 +179,7 @@ function fixedFor(k){
     if(w.includes('alle'))return f.gericht}
   return null}
 const fixedRecipe=n=>n?recipes.find(r=>String(r.name).toLowerCase()===String(n).toLowerCase()):null;
-const effR=k=>dayOf(k).off?null:rById(dayOf(k).r)||fixedRecipe(fixedFor(k));
+const effR=k=>dayOf(k).off||dayOf(k).txt?null:rById(dayOf(k).r)||fixedRecipe(fixedFor(k));
 const lastOff=()=>DAYS.length?DAYS[DAYS.length-1][2]:3;
 const dayOf=k=>plan.days?.[k]||{};
 const attOf=k=>({...defAtt(k),...(dayOf(k).att||{})});
@@ -203,17 +203,17 @@ function voteCands(k,taken=[]){const att=attOf(k),wk=wid(mon),out=[];const ok=id
 function decide(k){const d=dayOf(k),c=d.cands||[],v=d.votes||{},n={};for(const id of c)n[id]=0;for(const id of Object.values(v))if(id in n)n[id]++;
   const max=Math.max(0,...Object.values(n));let tied=c.filter(id=>n[id]===max);const wished=new Set(wishes.filter(w=>!w.done).map(w=>w.r));
   const tw=tied.filter(id=>wished.has(id));if(tw.length)tied=tw;return tied[Math.floor(Math.random()*tied.length)]}
-function setDay(k,patch){if(patch.r||patch.voting)patch={off:null,...patch};plan={days:{...plan.days,[k]:{...dayOf(k),...patch}}};save('plans/'+wid(mon),plan);if(patch.r)markWishes([patch.r]);render()}
+function setDay(k,patch){if(patch.r||patch.voting)patch={off:null,txt:null,...patch};plan={days:{...plan.days,[k]:{...dayOf(k),...patch}}};save('plans/'+wid(mon),plan);if(patch.r)markWishes([patch.r]);render()}
 
 // ---- Woche ----
-function recipeOptions(sel,att,fx,off){
+function recipeOptions(sel,att,fx,off,txt,edit){
   const ok=recipes.filter(r=>fits(r,att)),no=recipes.filter(r=>!fits(r,att));
-  const o=r=>`<option value="${esc(r.id)}"${!off&&r.id===sel?' selected':''}>${esc(r.name)}</option>`;
-  return `<option value="">${fx?'Fester Abend: '+esc(fx):'– Gericht wählen –'}</option><option value="__off__"${off?' selected':''}>Kein Abendessen geplant</option>${ok.map(o).join('')}${no.length?`<optgroup label="Nicht vegetarisch">${no.map(o).join('')}</optgroup>`:''}`}
-const dOpen=new Set();
-function dayInfo(k){const d=dayOf(k),att=attOf(k),fx=d.off||rById(d.r)?null:fixedFor(k),r=effR(k),vegIn=PEOPLE.filter(x=>x.veg&&att[x.id]);
+  const o=r=>`<option value="${esc(r.id)}"${!off&&!txt&&!edit&&r.id===sel?' selected':''}>${esc(r.name)}</option>`;
+  return `<option value="">${fx?'Fester Abend: '+esc(fx):'– Gericht wählen –'}</option><option value="__off__"${off&&!edit?' selected':''}>Kein Abendessen geplant</option><option value="__txt__"${txt||edit?' selected':''}>${txt?'Eigenes: '+esc(txt):'Eigenes eintippen …'}</option>${ok.map(o).join('')}${no.length?`<optgroup label="Nicht vegetarisch">${no.map(o).join('')}</optgroup>`:''}`}
+const dOpen=new Set(),tEdit=new Set();
+function dayInfo(k){const d=dayOf(k),att=attOf(k),fx=d.off||d.txt||rById(d.r)?null:fixedFor(k),r=effR(k),vegIn=PEOPLE.filter(x=>x.veg&&att[x.id]);
   const voting=!!(d.voting||d.cands?.length),bad=r&&!fits(r,att);
-  return{d,att,fx,r,vegIn,voting,bad,st:d.off?'s-off':bad?'s-warn':(r||fx)?'s-ok':voting?'s-vote':''}}
+  return{d,att,fx,r,vegIn,voting,bad,st:d.off?'s-off':d.txt?'s-ok':bad?'s-warn':(r||fx)?'s-ok':voting?'s-vote':''}}
 function voteSummary(d,att){const v=d.votes||{},n={};for(const id of Object.values(v))n[id]=(n[id]||0)+1;const max=Math.max(0,...Object.values(n));
   const lead=(d.cands||[]).filter(id=>max&&n[id]===max).map(id=>rById(id)?.name).filter(Boolean),left=PEOPLE.filter(p=>att[p.id]&&!v[p.id]).map(p=>p.n);
   const c=(d.cands||[]).length;return (lead.length?`${lead.join(' / ')} vorne (${max})`:c?`${c} ${c===1?'Gericht':'Gerichte'}, noch keine Stimme`:'noch keine Gerichte')+(left.length&&!locked()?` · fehlt: ${left.join(', ')}`:'')}
@@ -222,6 +222,7 @@ function renderWeek(){
     const{d,att,fx,r,vegIn,voting,bad}=dayInfo(k),p=portions(att),open=dOpen.has(k),n=PEOPLE.filter(x=>att[x.id]).length;
     let title,sub,empty=false;
     if(d.off){title='Kein Abendessen geplant';sub='kein Einkauf'}
+    else if(d.txt){title=esc(d.txt)+' <span class="tag">eigenes</span>';sub=`${n} Personen · nur heute, kein Einkauf`}
     else if(fx||r){title=esc(fx||r.name)+(fx?' <span class="tag">fest</span>':'')+(d.auto&&r&&!fx?' <span class="tag">Abstimmung</span>':'');
       sub=bad?`<span class="w">Nicht vegetarisch – ${esc(vegIn.map(x=>x.n).join(' und '))} essen mit</span>`:fx&&!r?`${n} Personen · kein Einkauf`:`${nf(p.tot)} Portionen${r&&hasMeat(r)&&vegIn.length?' · mit Veggie-Variante':''}`}
     else if(voting){title='Abstimmung läuft';sub=esc(voteSummary(d,att))}
@@ -232,8 +233,9 @@ function renderWeek(){
     return `<article class="day${open?' open':''}" id="day-${k}"><div class="dr">
       <button class="dh" data-dopen="${k}" aria-expanded="${open}"><span class="dn">${name.slice(0,2)}<small>${dfmt(add(mon,o))}</small></span><span class="ds${empty?' empty':''}">${title}<small>${sub}</small></span></button>
       <span class="av">${PEOPLE.map(x=>`<button class="${att[x.id]?'on':''}${x.veg?' v':''}" data-att="${k}" data-p="${esc(x.id)}" aria-pressed="${!!att[x.id]}" aria-label="${esc(x.n)} isst ${att[x.id]?'mit':'nicht mit'}">${esc(x.ini||'')}</button>`).join('')}</span></div>
-      ${open?`<div class="dx"><div class="row"><select data-k="${k}" aria-label="Gericht am ${name}">${recipeOptions(d.r,att,fx,d.off)}</select>
+      ${open?`<div class="dx"><div class="row"><select data-k="${k}" aria-label="Gericht am ${name}">${recipeOptions(d.r,att,fx,d.off,d.txt,tEdit.has(k))}</select>
       <button data-sug="${k}">Vorschlag</button>${voting||locked()?'':`<button data-startvote="${k}">Abstimmen</button>`}</div>
+      ${tEdit.has(k)||d.txt?`<div class="row" style="margin-top:8px"><input data-txt="${k}" value="${esc(d.txt||'')}" placeholder="z. B. Reste, Pizza bestellen, bei Oma" maxlength="80" aria-label="Eigenes Gericht am ${name}"><button data-txtok="${k}">Übernehmen</button></div>`:''}
       ${voting?voteBlock(k,d,att):''}
       <div class="meta" style="margin-top:8px">${n} Personen · ${nf(p.tot)} Portionen</div>${status}</div>`:''}</article>`}).join('');
   const nOpen=DAYS.filter(([k])=>dayInfo(k).voting).length;
@@ -410,7 +412,8 @@ addEventListener('hashchange',render);
 
 // ---- Ereignisse ----
 document.addEventListener('change',e=>{const t=e.target;
-  if(t.dataset.k){const off=t.value==='__off__';setDay(t.dataset.k,{r:off?null:t.value||null,off:off||null,auto:null,...(off?{cands:null,votes:null,voting:null}:{})})}
+  if(t.dataset.k){const k=t.dataset.k;if(t.value==='__txt__'){tEdit.add(k);render();const i=document.querySelector(`[data-txt="${k}"]`);if(i){i.focus();i.select()}return}
+    tEdit.delete(k);const off=t.value==='__off__';setDay(k,{r:off?null:t.value||null,off:off||null,txt:null,auto:null,...(off?{cands:null,votes:null,voting:null}:{})})}
   else if(t.dataset.addc){if(t.value){const k=t.dataset.addc;setDay(k,{cands:[...(dayOf(k).cands||[]),t.value]})}}
   else if(t.dataset.wplan){const w=wishes.find(x=>x.id===t.dataset.wplan);if(w&&t.value)setDay(t.value,{r:w.r})}
   else if(t.id==='kf'){settings={...settings,kidFactor:parseFloat(t.value.replace(',','.'))};save('settings/main',settings);render()}
@@ -418,8 +421,9 @@ document.addEventListener('change',e=>{const t=e.target;
   else if(t.dataset.ex){shop={...shop,extras:(shop.extras||[]).map(x=>x.id===t.dataset.ex?{...x,done:t.checked}:x)};save('shop/'+wid(mon),shop);render()}});
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.att){const k=b.dataset.att,a=attOf(k);a[b.dataset.p]=!a[b.dataset.p];setDay(k,{att:a})}
+  else if(b.dataset.txtok)setTxt(b.dataset.txtok);
   else if(b.dataset.sug){const k=b.dataset.sug,id=suggest(k);if(id)setDay(k,{r:id})}
-  else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!days[k]?.off&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
+  else if(b.id==='fill'){const days={...plan.days},taken=[];DAYS.forEach(([k])=>{if(!days[k]?.r&&!days[k]?.off&&!days[k]?.txt&&!fixedFor(k)){const id=suggest(k,taken);if(id){taken.push(id);days[k]={...days[k],r:id}}}});plan={days};save('plans/'+wid(mon),plan);markWishes(taken);render()}
   else if(b.dataset.wopen){wOpen=wOpen===b.dataset.wopen?'':b.dataset.wopen;render()}
   else if(b.dataset.wadd){addWish($('#wpw').value,b.dataset.wadd,'',$('#wpd').value||null);render()}
   else if(b.dataset.dopen){const k=b.dataset.dopen;dOpen.has(k)?dOpen.delete(k):dOpen.add(k);render()}
@@ -467,7 +471,9 @@ document.addEventListener('submit',e=>{e.preventDefault();
 function addWish(who,r,t,day){
     const id=Date.now().toString(36);if(day&&r){const dd=dayOf(day);if((dd.voting||dd.cands?.length)&&!locked()&&!(dd.cands||[]).includes(r)&&fits(rById(r)||{},attOf(day)))setDay(day,{cands:[...(dd.cands||[]),r]})}save('wishes/'+id,{who,r:r||null,text:r?(rById(r)?.name||''):t,done:false,at:new Date().toISOString(),day,week:day?wid(mon):null})}
 $('#ov').addEventListener('click',e=>{if(e.target.id==='ov')closeR()});
-addEventListener('keydown',e=>{if(e.key==='Escape')closeR()});
+addEventListener('keydown',e=>{if(e.key==='Escape')closeR();else if(e.key==='Enter'&&e.target.dataset?.txt){e.preventDefault();setTxt(e.target.dataset.txt)}});
+function setTxt(k){const v=(document.querySelector(`[data-txt="${k}"]`)?.value||'').trim().slice(0,80);tEdit.delete(k);
+  if(v)setDay(k,{txt:v,r:null,off:null,auto:null,cands:null,votes:null,voting:null});else setDay(k,{txt:null})}
 
 // ---- Daten (Home Assistant App) ----
 let me='';

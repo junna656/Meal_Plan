@@ -185,6 +185,9 @@ def week_summary(week_id):
         if day.get("off"):
             lines.append(f"{DAYNAMES[k]}: kein Abendessen")
             continue
+        if day.get("txt"):
+            lines.append(f"{DAYNAMES[k]}: {day['txt']}")
+            continue
         att = {**def_att(ppl, k, monday), **(day.get("att") or {})}
         r = recipes.get(day.get("r"))
         fx = None if r else fixed_for(o, ppl, k, monday, att)
